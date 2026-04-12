@@ -1,0 +1,143 @@
+================================================================================
+TASK LIST E REQUISITOS — INTEGRAÇÃO FRONTEND + BACKEND (Spring Boot)
+Projeto: Brunão Custom Cars / demo
+Frontend: PROJETO2/frontend (Vite). Backend: PROJETO2/backend.
+================================================================================
+
+0. CONTEXTO (ESTADO ATUAL)
+--------------------------------------------------------------------------------
+Frontend (Vite + React 19, pasta frontend/ na raiz do repositório):
+  - Navegação por estado local; login/logout via API (JWT em sessionStorage); módulo src/api.
+  - Peças/funcionários/clientes no painel ainda em memória local (integração C/D pendente).
+  - CLIENTE e FUNCIONARIO: telas placeholder; GERENTE: painel admin.
+  - Demo API: gerente@empresa.com / senha123.
+
+Backend (Spring Boot 3.2, Java 17):
+  - API REST com JWT; H2 em memória; usuário seed: gerente@empresa.com / senha123.
+  - Registro de usuários: POST /auth/register exige GERENTE autenticado (não é cadastro público).
+  - Modelo de produto: Product (name, description, price, categories, cars) — não bate com
+    "peça" do front (nome, marca, modelo, ano, preco) sem mapeamento ou mudança de contrato.
+  - jwt.secret está em Base64 válido (32 bytes) compatível com JwtUtil.getSignInKey().
+  - PUT/DELETE em /products, /clients, /funcionarios: apenas GERENTE (GET/listagem ainda para
+    qualquer usuário autenticado).
+
+================================================================================
+1. REQUISITOS FUNCIONAIS (INTEGRAÇÃO)
+--------------------------------------------------------------------------------
+RF1  O usuário deve autenticar-se contra POST /auth/login com email e senha reais do backend.
+RF2  O token JWT deve ser armazenado de forma segura no cliente (preferir memória + refresh
+     ou httpOnly cookie em evolução; evitar localStorage se política de segurança exigir).
+RF3  Todas as requisições autenticadas devem enviar: Authorization: Bearer <token>.
+RF4  Logout deve chamar POST /auth/logout com o mesmo Bearer token (blacklist no servidor).
+RF5  Listagem de produtos na home deve vir de GET /products (ou endpoint acordado), não de
+     estado vazio/mock.
+RF6  CRUD de "peças" no painel gerente deve usar a API de Product (ou novos endpoints/DTOs)
+     com mapeamento explícito entre modelo UI e modelo API.
+RF7  CRUD de funcionários: POST/PUT/DELETE /funcionarios exigem GERENTE; GET ainda para
+     qualquer autenticado (ajustar se quiser restringir listagem).
+RF8  CRUD de clientes: POST/PUT/DELETE /clients exigem GERENTE; GET ainda para qualquer
+     autenticado (ajustar se necessário).
+RF9  Cadastro "Criar conta" na loja: ou implementar fluxo público no backend (novo endpoint)
+     ou redirecionar para política real (apenas gerente cria usuários) e ajustar copy da UI.
+RF10 Área do cliente logado: definir telas e endpoints (ex.: só leitura de produtos, pedidos
+     futuros); corrigir roteamento após login para não exibir painel de gerente.
+
+================================================================================
+2. REQUISITOS NÃO FUNCIONAIS
+--------------------------------------------------------------------------------
+RNF1 CORS: definir origin exata do Vite (ex.: http://localhost:5173) em vez de "*" com
+     credentials, quando possível.
+RNF2 Variável de ambiente no front: VITE_API_BASE_URL apontando para http://localhost:8080
+     (ou porta real do Spring).
+RNF3 Tratamento de 401: limpar sessão/token e redirecionar para login; opcional refresh token
+     (não existe hoje no backend).
+RNF4 Mensagens de erro: mapear respostas do GlobalExceptionHandler (strings) ou evoluir API
+     para JSON de erro consistente.
+RNF5 Alinhar credenciais de demonstração: ou mudar DataInitializer para gerente@brunao.com ou
+     atualizar textos do front para gerente@empresa.com.
+RNF6 Documentar contratos (campos obrigatórios) de LoginRequest, RegisterRequest, Product*,
+     Client*, Funcionario* para o time de front.
+
+================================================================================
+3. DECISÕES DE PRODUTO (ESCOLHER ANTES DE CODAR)
+--------------------------------------------------------------------------------
+D1  Modelo de catálogo: (A) adaptar UI ao Product atual + Category/Car; ou (B) estender
+    backend (novos campos ou entidade "Peça"); ou (C) DTO de apresentação que agrega dados.
+D2  Registro de cliente final: público (novo endpoint) ou somente via gerente?
+D3  Escopo do CLIENTE logado: apenas catálogo, ou também carrinho/pedidos (não existem na API)?
+D4  Local do projeto front: resolvido — frontend/ na raiz PROJETO2 (fora do pacote Java).
+
+================================================================================
+4. TASK LIST (ORDEM SUGERIDA)
+--------------------------------------------------------------------------------
+
+Fase A — Fundação backend pronta para o browser
+  [x] A.1 Corrigir configuração JWT: jwt.secret em Base64 válido (32 bytes para HS256).
+  [x] A.2 Ajustar CORS (origins permitidas, métodos, headers, credentials) para o dev server
+        do Vite.
+  [x] A.3 (Opcional) Expor GET / ou health público para smoke test sem token.
+  [x] A.4 Revisar @PreAuthorize nos controllers conforme política desejada (mínimo: PUT/DELETE
+        de /products, /clients, /funcionarios restritos a GERENTE se for o caso).
+
+Fase B — Cliente HTTP e auth no React
+  [x] B.1 Criar módulo api (fetch ou axios) com baseURL de import.meta.env.VITE_API_BASE_URL.
+  [x] B.2 Implementar login: POST /auth/login; guardar token + email + role da AuthResponse.
+  [x] B.3 Encadear header Authorization em todas as chamadas após login.
+  [x] B.4 Implementar logout: POST /auth/logout e limpeza de estado local.
+  [ ] B.5 Substituir login hardcoded por tratamento de 401 da API (mensagem amigável).
+  [x] B.6 Alinhar credenciais de demo (email seed vs texto da tela de login).
+
+Fase C — Catálogo e painel gerente (produtos)
+  [ ] C.1 Definir mapeamento UI ↔ ProductResponse / ProductCreateRequest / ProductUpdateRequest
+        (ids de categorias e carros: carregar GET /categories e GET /cars ou simplificar UI).
+  [ ] C.2 Home: GET /products para grid "Melhores ofertas"; loading e estado vazio reais.
+  [ ] C.3 Painel: criar/editar/excluir produto via POST/PUT/DELETE /products com JWT de GERENTE.
+  [ ] C.4 Remover alerts de sucesso/erro frágeis; usar feedback inline ou toast.
+
+Fase D — Funcionários e clientes no painel
+  [ ] D.1 Integrar funcionários com /funcionarios (payloads ClientCreateRequest-style do backend
+        — conferir DTOs reais FuncionarioCreateRequest/UpdateRequest).
+  [ ] D.2 Integrar clientes com /clients (ClientCreateRequest/UpdateRequest/Response).
+  [ ] D.3 Garantir que listagens refletem backend após mutações (refetch ou atualizar estado).
+
+Fase E — Registro e papel CLIENTE
+  [ ] E.1 Decidir D2 (registro público vs só gerente); implementar no backend e no formulário
+        "Cadastre-se" de forma coerente.
+  [ ] E.2 Implementar dashboard CLIENTE (telas mínimas) e corrigir bug de redirecionamento
+        pós-login (não abrir AdminDashboard para role CLIENTE).
+  [ ] E.3 Se register for só gerente: esconder ou alterar fluxo da página pública de cadastro.
+
+Fase E — Qualidade e entrega
+  [ ] F.1 Adicionar proxy no vite.config.js (opcional) para /api → backend e evitar CORS local.
+  [ ] F.2 README curto: como subir Spring, como subir Vite, variáveis .env, usuário demo.
+  [ ] F.3 Testes manuais checklist: login, logout, listar produtos, CRUD produto como gerente,
+        CRUD funcionário/cliente, cliente logado só no que for permitido.
+
+================================================================================
+5. CHECKLIST RÁPIDO DE ENDPOINTS (REFERÊNCIA)
+--------------------------------------------------------------------------------
+POST   /auth/login          — público
+POST   /auth/register       — requer JWT com papel GERENTE (método)
+POST   /auth/logout         — público na cadeia; enviar Bearer para invalidar
+GET/POST/PUT/DELETE /products
+GET/POST/PUT/DELETE /clients
+GET/POST/PUT/DELETE /funcionarios
+GET/POST/PUT/DELETE /gerentes
+GET/POST/PUT/DELETE /addresses
+GET/POST/PUT/DELETE /categories
+GET/POST/PUT/DELETE /cars
+GET/POST/PUT/DELETE /car-brands
+
+(Autenticação JWT para todos exceto /auth/**, GET /, GET /health conforme SecurityConfig atual.)
+
+================================================================================
+6. RISCOS / DÍVIDAS TÉCNICAS
+--------------------------------------------------------------------------------
+- Blacklist de tokens em memória: reinício do servidor invalida a lista; aceitável só em dev.
+- H2 create-drop: dados somem ao reiniciar; integração local previsível mas não persistente.
+- Dois arquivos App (App.jsx ativo, App.tsx morto): evitar confusão removendo ou unificando.
+- Smoke test sem token: GET / (texto) ou GET /health (JSON {"status":"UP"}).
+
+================================================================================
+FIM DO DOCUMENTO
+================================================================================
