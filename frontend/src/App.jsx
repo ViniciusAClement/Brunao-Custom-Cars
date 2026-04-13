@@ -434,13 +434,6 @@ const AdminEmployees = ({ setCurrentPage, handleLogout, employees, newEmployeeFo
             required 
           />
           <input 
-            type="text" 
-            placeholder="Cargo" 
-            value={newEmployeeForm.cargo}
-            onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, cargo: e.target.value })}
-            required 
-          />
-          <input 
             type="email" 
             placeholder="Email" 
             value={newEmployeeForm.email}
@@ -452,6 +445,21 @@ const AdminEmployees = ({ setCurrentPage, handleLogout, employees, newEmployeeFo
             placeholder="Telefone" 
             value={newEmployeeForm.telefone}
             onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, telefone: e.target.value })}
+            required 
+          />
+          <input 
+            type="text" 
+            placeholder="CPF" 
+            value={newEmployeeForm.cpf}
+            onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, cpf: e.target.value })}
+            required 
+          />
+          <input 
+            type="password" 
+            placeholder="Senha" 
+            value={newEmployeeForm.senha}
+            onChange={(e) => setNewEmployeeForm({ ...newEmployeeForm, senha: e.target.value })}
+            required 
           />
           <div className="form-buttons">
             <button type="submit" className="btn-submit">{editingEmployee ? 'Atualizar' : 'Cadastrar'}</button>
@@ -469,8 +477,8 @@ const AdminEmployees = ({ setCurrentPage, handleLogout, employees, newEmployeeFo
             employees.map(emp => (
               <div key={emp.id} className="list-item">
                 <div className="list-info">
-                  <span>{emp.nome} - {emp.cargo}</span>
-                  <small>{emp.email} {emp.telefone && `| ${emp.telefone}`}</small>
+                  <span>{emp.nome}</span>
+                  <small>{emp.email} {emp.telefone && `| ${emp.telefone}`} {emp.cpf && `| CPF: ${emp.cpf}`}</small>
                 </div>
                 <div className="list-actions">
                   <button className="btn-edit" onClick={() => handleEditEmployee(emp)}>✏️ Editar</button>
@@ -521,12 +529,22 @@ const AdminClients = ({ setCurrentPage, handleLogout, clients, newClientForm, se
             placeholder="Telefone" 
             value={newClientForm.telefone}
             onChange={(e) => setNewClientForm({ ...newClientForm, telefone: e.target.value })}
+            required 
           />
-          <textarea 
-            placeholder="Endereço"
-            value={newClientForm.endereco}
-            onChange={(e) => setNewClientForm({ ...newClientForm, endereco: e.target.value })}
-          ></textarea>
+          <input 
+            type="text" 
+            placeholder="CPF" 
+            value={newClientForm.cpf}
+            onChange={(e) => setNewClientForm({ ...newClientForm, cpf: e.target.value })}
+            required 
+          />
+          <input 
+            type="password" 
+            placeholder="Senha" 
+            value={newClientForm.senha}
+            onChange={(e) => setNewClientForm({ ...newClientForm, senha: e.target.value })}
+            required 
+          />
           <div className="form-buttons">
             <button type="submit" className="btn-submit">{editingClient ? 'Atualizar' : 'Cadastrar'}</button>
             {editingClient && (
@@ -544,8 +562,7 @@ const AdminClients = ({ setCurrentPage, handleLogout, clients, newClientForm, se
               <div key={client.id} className="list-item">
                 <div className="list-info">
                   <span>{client.nome}</span>
-                  <small>{client.email} {client.telefone && `| ${client.telefone}`}</small>
-                  {client.endereco && <small>📍 {client.endereco}</small>}
+                  <small>{client.email} {client.telefone && `| ${client.telefone}`} {client.cpf && `| CPF: ${client.cpf}`}</small>
                 </div>
                 <div className="list-actions">
                   <button className="btn-edit" onClick={() => handleEditClient(client)}>✏️ Editar</button>
@@ -790,8 +807,8 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [loginSubmitting, setLoginSubmitting] = useState(false)
   const [newPartForm, setNewPartForm] = useState({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
-  const [newEmployeeForm, setNewEmployeeForm] = useState({ nome: '', cargo: '', email: '', telefone: '' })
-  const [newClientForm, setNewClientForm] = useState({ nome: '', email: '', telefone: '', endereco: '' })
+  const [newEmployeeForm, setNewEmployeeForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
+  const [newClientForm, setNewClientForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
   const [newCategoryForm, setNewCategoryForm] = useState({ name: '' })
   const [newBrandForm, setNewBrandForm] = useState({ name: '' })
   const [newCarForm, setNewCarForm] = useState({ nome: '', ano: '', carBrandId: '' })
@@ -1205,7 +1222,7 @@ function App() {
 
   const handleCreateEmployee = (e) => {
     e.preventDefault()
-    if (newEmployeeForm.nome && newEmployeeForm.cargo && newEmployeeForm.email) {
+    if (newEmployeeForm.nome && newEmployeeForm.email && newEmployeeForm.telefone && newEmployeeForm.cpf && newEmployeeForm.senha) {
       if (editingEmployee) {
         // Editando funcionário existente
         setEmployees(employees.map(emp => 
@@ -1217,7 +1234,7 @@ function App() {
         setEmployees([...employees, { ...newEmployeeForm, id: Date.now() }])
         alert('Funcionário cadastrado com sucesso!')
       }
-      setNewEmployeeForm({ nome: '', cargo: '', email: '', telefone: '' })
+      setNewEmployeeForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
       setEditingEmployee(null)
     } else {
       alert('Preencha todos os campos obrigatórios.')
@@ -1237,13 +1254,13 @@ function App() {
   }
 
   const handleCancelEditEmployee = () => {
-    setNewEmployeeForm({ nome: '', cargo: '', email: '', telefone: '' })
+    setNewEmployeeForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
     setEditingEmployee(null)
   }
 
   const handleCreateClient = (e) => {
     e.preventDefault()
-    if (newClientForm.nome && newClientForm.email) {
+    if (newClientForm.nome && newClientForm.email && newClientForm.telefone && newClientForm.cpf && newClientForm.senha) {
       if (editingClient) {
         // Editando cliente existente
         setClients(clients.map(client => 
@@ -1255,7 +1272,7 @@ function App() {
         setClients([...clients, { ...newClientForm, id: Date.now() }])
         alert('Cliente cadastrado com sucesso!')
       }
-      setNewClientForm({ nome: '', email: '', telefone: '', endereco: '' })
+      setNewClientForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
       setEditingClient(null)
     } else {
       alert('Preencha todos os campos obrigatórios.')
@@ -1275,7 +1292,7 @@ function App() {
   }
 
   const handleCancelEditClient = () => {
-    setNewClientForm({ nome: '', email: '', telefone: '', endereco: '' })
+    setNewClientForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
     setEditingClient(null)
   }
 
