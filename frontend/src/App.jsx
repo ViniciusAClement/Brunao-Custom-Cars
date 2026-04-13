@@ -1220,24 +1220,61 @@ function App() {
     setEditingPart(null)
   }
 
-  const handleCreateEmployee = (e) => {
+  const handleCreateEmployee = async (e) => {
     e.preventDefault()
-    if (newEmployeeForm.nome && newEmployeeForm.email && newEmployeeForm.telefone && newEmployeeForm.cpf && newEmployeeForm.senha) {
+    if (!newEmployeeForm.nome || !newEmployeeForm.email || !newEmployeeForm.telefone || !newEmployeeForm.cpf || !newEmployeeForm.senha) {
+      alert('Preencha todos os campos obrigatórios.')
+      return
+    }
+
+    const body = {
+      name: newEmployeeForm.nome,
+      email: newEmployeeForm.email,
+      phone: newEmployeeForm.telefone,
+      password: newEmployeeForm.senha,
+      cpf: newEmployeeForm.cpf
+    }
+
+    try {
       if (editingEmployee) {
-        // Editando funcionário existente
-        setEmployees(employees.map(emp => 
-          emp.id === editingEmployee.id ? { ...newEmployeeForm, id: editingEmployee.id } : emp
-        ))
+        const res = await apiFetch(`/funcionarios/${editingEmployee.id}`, {
+          method: 'PUT',
+          body: body,
+        })
+        if (!res.ok) {
+          const errorBody = await res.text()
+          throw new Error(errorBody || 'Falha ao atualizar o funcionário.')
+        }
+        let updatedEmployee
+        try {
+          updatedEmployee = await res.json()
+        } catch {
+          updatedEmployee = { ...newEmployeeForm, id: editingEmployee.id }
+        }
+        setEmployees(employees.map(emp => emp.id === editingEmployee.id ? updatedEmployee : emp))
         alert('Funcionário atualizado com sucesso!')
       } else {
-        // Criando novo funcionário
-        setEmployees([...employees, { ...newEmployeeForm, id: Date.now() }])
+        const res = await apiFetch('/funcionarios', {
+          method: 'POST',
+          body: body,
+        })
+        if (!res.ok) {
+          const errorBody = await res.text()
+          throw new Error(errorBody || 'Falha ao cadastrar o funcionário.')
+        }
+        let createdEmployee
+        try {
+          createdEmployee = await res.json()
+        } catch {
+          createdEmployee = { ...newEmployeeForm, id: Date.now() }
+        }
+        setEmployees([...employees, createdEmployee])
         alert('Funcionário cadastrado com sucesso!')
       }
       setNewEmployeeForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
       setEditingEmployee(null)
-    } else {
-      alert('Preencha todos os campos obrigatórios.')
+    } catch (error) {
+      alert(error.message || 'Falha ao salvar o funcionário.')
     }
   }
 
@@ -1258,24 +1295,61 @@ function App() {
     setEditingEmployee(null)
   }
 
-  const handleCreateClient = (e) => {
+  const handleCreateClient = async (e) => {
     e.preventDefault()
-    if (newClientForm.nome && newClientForm.email && newClientForm.telefone && newClientForm.cpf && newClientForm.senha) {
+    if (!newClientForm.nome || !newClientForm.email || !newClientForm.telefone || !newClientForm.cpf || !newClientForm.senha) {
+      alert('Preencha todos os campos obrigatórios.')
+      return
+    }
+
+    const body = {
+      name: newClientForm.nome,
+      email: newClientForm.email,
+      phone: newClientForm.telefone,
+      password: newClientForm.senha,
+      cpf: newClientForm.cpf
+    }
+
+    try {
       if (editingClient) {
-        // Editando cliente existente
-        setClients(clients.map(client => 
-          client.id === editingClient.id ? { ...newClientForm, id: editingClient.id } : client
-        ))
+        const res = await apiFetch(`/clients/${editingClient.id}`, {
+          method: 'PUT',
+          body: body,
+        })
+        if (!res.ok) {
+          const errorBody = await res.text()
+          throw new Error(errorBody || 'Falha ao atualizar o cliente.')
+        }
+        let updatedClient
+        try {
+          updatedClient = await res.json()
+        } catch {
+          updatedClient = { ...newClientForm, id: editingClient.id }
+        }
+        setClients(clients.map(client => client.id === editingClient.id ? updatedClient : client))
         alert('Cliente atualizado com sucesso!')
       } else {
-        // Criando novo cliente
-        setClients([...clients, { ...newClientForm, id: Date.now() }])
+        const res = await apiFetch('/clients', {
+          method: 'POST',
+          body: body,
+        })
+        if (!res.ok) {
+          const errorBody = await res.text()
+          throw new Error(errorBody || 'Falha ao cadastrar o cliente.')
+        }
+        let createdClient
+        try {
+          createdClient = await res.json()
+        } catch {
+          createdClient = { ...newClientForm, id: Date.now() }
+        }
+        setClients([...clients, createdClient])
         alert('Cliente cadastrado com sucesso!')
       }
       setNewClientForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
       setEditingClient(null)
-    } else {
-      alert('Preencha todos os campos obrigatórios.')
+    } catch (error) {
+      alert(error.message || 'Falha ao salvar o cliente.')
     }
   }
 
