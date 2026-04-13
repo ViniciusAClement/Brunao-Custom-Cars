@@ -201,6 +201,91 @@ body {
   box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3);
 }
 
+.product-card select,
+.product-card textarea,
+.create-part-form input,
+.create-part-form select,
+.create-part-form textarea,
+.admin-search input,
+.admin-search select {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.create-part-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.create-part-form select {
+  min-height: 50px;
+}
+
+.part-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: #fff;
+  padding: 18px;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  margin-bottom: 18px;
+}
+
+.part-item img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.part-info {
+  flex: 1;
+}
+
+.part-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.part-actions .btn-edit,
+.part-actions .btn-delete {
+  width: 100%;
+}
+
+.admin-search {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+  gap: 12px;
+  margin: 30px 0;
+  align-items: center;
+}
+
+.admin-search select {
+  min-height: 44px;
+}
+
+.btn-search {
+  padding: 12px 20px;
+  background-color: #1a1a1a;
+  color: #FFD700;
+  border: 2px solid #FFD700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-search:hover {
+  background-color: #000;
+}
+
 .product-image {
   height: 150px;
   display: flex;
@@ -228,6 +313,26 @@ body {
   color: #FFD700;
   font-weight: bold;
   margin-bottom: 5px;
+}
+
+.product-description,
+.part-description {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #444;
+  margin-bottom: 10px;
+}
+
+.product-tags,
+.part-meta {
+  font-size: 12px;
+  color: #777;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.product-tags {
+  min-height: 36px;
 }
 
 .product-stock {
@@ -858,7 +963,8 @@ body {
 }
 
 .admin-form input,
-.admin-form textarea {
+.admin-form textarea,
+.admin-form select {
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 5px;
@@ -869,6 +975,12 @@ body {
 .admin-form textarea {
   resize: vertical;
   min-height: 100px;
+}
+
+.admin-form button {
+  padding: 12px 18px;
+  border-radius: 5px;
+  font-weight: 600;
 }
 
 .list-container {

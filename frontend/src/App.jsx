@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { apiFetch, setAccessTokenGetter } from './api'
 
@@ -39,7 +39,7 @@ function initialAuthFromStored() {
   return { token: s.token, email: s.email ?? null, role: s.role ?? null }
 }
 
-const HomePage = ({ setCurrentPage, parts }) => (
+const HomePage = ({ setCurrentPage, parts, categories, cars }) => (
   <div className="home-page">
     <header className="navbar">
       <div className="navbar-left">
@@ -79,11 +79,20 @@ const HomePage = ({ setCurrentPage, parts }) => (
           parts.map(part => (
             <div key={part.id} className="product-card">
               <div className="product-image">
-                <img src="https://via.placeholder.com/150x150?text=Peça" alt={part.nome} />
+                <img src="https://via.placeholder.com/150x150?text=Peça" alt={part.name} />
               </div>
-              <h3>{part.nome}</h3>
-              <p className="product-price">R$ {part.preco.toFixed(2)}</p>
-              <p className="product-stock">Estoque disponível</p>
+              <h3>{part.name}</h3>
+              <p className="product-description">{part.description}</p>
+              <p className="product-price">R$ {Number(part.price).toFixed(2)}</p>
+              {(part.categoryIds || []).length > 0 && (
+                <p className="product-tags">Categorias: {(part.categoryIds || []).map(id => categories.find(cat => cat.id === id)?.name).filter(Boolean).join(', ')}</p>
+              )}
+              {(part.carIds || []).length > 0 && (
+                <p className="product-tags">Compatível com: {(part.carIds || []).map(id => {
+                  const car = cars.find(carItem => carItem.id === id)
+                  return car ? `${car.carBrandName} ${car.nome} ${car.ano}` : null
+                }).filter(Boolean).join(', ')}</p>
+              )}
               <button className="btn-add-cart">Adicionar ao carrinho</button>
             </div>
           ))
@@ -216,12 +225,15 @@ const RegisterPage = ({ setCurrentPage, registerForm, setRegisterForm, handleReg
   </div>
 )
 
-const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setNewPartForm, handleCreatePart, clients, editingPart, handleEditPart, handleDeletePart, handleCancelEditPart }) => (
+const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setNewPartForm, handleCreatePart, clients, editingPart, handleEditPart, handleDeletePart, handleCancelEditPart, categories, cars, searchQuery, setSearchQuery, selectedCategoryFilter, setSelectedCategoryFilter, selectedBrandFilter, setSelectedBrandFilter, selectedCarFilter, setSelectedCarFilter }) => (
   <div className="admin-layout">
     <aside className="sidebar">
       <div className="sidebar-logo">⚙️ Gerência</div>
       <nav className="sidebar-menu">
         <button className="menu-item active">Gestão de Peças</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-categories')}>Categorias</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-brands')}>Marcas</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-cars')}>Veículos</button>
         <button className="menu-item" onClick={() => setCurrentPage('admin-employees')}>Funcionários</button>
         <button className="menu-item" onClick={() => setCurrentPage('admin-clients')}>Clientes</button>
         <button className="menu-item">Relatórios</button>
@@ -234,7 +246,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
         <h1>Bem-vindo, Gerente!</h1>
         <div className="stats">
           <div className="stat-card">
-            <p className="stat-value">R$ {(parts.reduce((acc, p) => acc + (p.preco || 0), 0) * 1.5).toFixed(2)}</p>
+            <p className="stat-value">R$ {(parts.reduce((acc, p) => acc + (Number(p.price) || 0), 0)).toFixed(2)}</p>
             <p className="stat-label">Vendas últimas 7 dias</p>
             <span className="stat-percent">↑ 0%</span>
           </div>
@@ -256,42 +268,55 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
           <div className="create-part-form">
             <h3>{editingPart ? 'Editar Peça' : 'Cadastrar Nova Peça'}</h3>
             <form onSubmit={(e) => { e.preventDefault(); handleCreatePart(); }}>
-              <input 
+                      <input 
                 type="text" 
                 placeholder="Nome da peça" 
-                value={newPartForm.nome}
-                onChange={(e) => setNewPartForm({ ...newPartForm, nome: e.target.value })}
+                value={newPartForm.name}
+                onChange={(e) => setNewPartForm({ ...newPartForm, name: e.target.value })}
                 required 
               />
-              <input 
-                type="text" 
-                placeholder="Marca" 
-                value={newPartForm.marca}
-                onChange={(e) => setNewPartForm({ ...newPartForm, marca: e.target.value })}
-                required 
-              />
-              <input 
-                type="text" 
-                placeholder="Modelo" 
-                value={newPartForm.modelo}
-                onChange={(e) => setNewPartForm({ ...newPartForm, modelo: e.target.value })}
-                required 
-              />
-              <input 
-                type="number" 
-                placeholder="Ano" 
-                value={newPartForm.ano}
-                onChange={(e) => setNewPartForm({ ...newPartForm, ano: e.target.value })}
-                required 
+              <textarea
+                placeholder="Descrição da peça"
+                value={newPartForm.description}
+                onChange={(e) => setNewPartForm({ ...newPartForm, description: e.target.value })}
+                required
               />
               <input 
                 type="number" 
                 step="0.01"
                 placeholder="Preço" 
-                value={newPartForm.preco}
-                onChange={(e) => setNewPartForm({ ...newPartForm, preco: e.target.value })}
+                value={newPartForm.price}
+                onChange={(e) => setNewPartForm({ ...newPartForm, price: e.target.value })}
                 required 
               />
+              <select
+                multiple
+                value={newPartForm.categoryIds}
+                onChange={(e) => setNewPartForm({
+                  ...newPartForm,
+                  categoryIds: Array.from(e.target.selectedOptions, option => Number(option.value))
+                })}
+                required
+              >
+                <option value="" disabled>Selecione categorias</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <select
+                multiple
+                value={newPartForm.carIds}
+                onChange={(e) => setNewPartForm({
+                  ...newPartForm,
+                  carIds: Array.from(e.target.selectedOptions, option => Number(option.value))
+                })}
+                required
+              >
+                <option value="" disabled>Selecione veículos compatíveis</option>
+                {cars.map(car => (
+                  <option key={car.id} value={car.id}>{car.carBrandName} {car.nome} ({car.ano})</option>
+                ))}
+              </select>
               <div className="form-buttons">
                 <button type="submit" className="btn-submit-form">{editingPart ? 'Atualizar' : 'Criar Peça'}</button>
                 {editingPart && (
@@ -302,11 +327,33 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
           </div>
 
           <div className="admin-search">
-            <input type="text" placeholder="Buscar por nome, código ou veículo" />
-            <select><option>Categoria</option></select>
-            <select><option>Marca</option></select>
-            <select><option>Veículo Compatível</option></select>
-            <button className="btn-search">Buscar</button>
+            <input
+              type="text"
+              placeholder="Buscar por nome ou descrição"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <select value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)}>
+              <option value="">Categoria</option>
+              {categories.map(category => (
+                <option key={category.id} value={String(category.id)}>{category.name}</option>
+              ))}
+            </select>
+            <select value={selectedBrandFilter} onChange={(e) => setSelectedBrandFilter(e.target.value)}>
+              <option value="">Marca</option>
+              {[...new Set(cars.map(car => car.carBrandName))].map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+            <select value={selectedCarFilter} onChange={(e) => setSelectedCarFilter(e.target.value)}>
+              <option value="">Veículo Compatível</option>
+              {cars.map(car => (
+                <option key={car.id} value={String(car.id)}>{`${car.carBrandName} ${car.nome} ${car.ano}`}</option>
+              ))}
+            </select>
+            <button className="btn-search" type="button" onClick={() => { setSearchQuery(searchQuery); }}>
+              Buscar
+            </button>
           </div>
 
           <div className="parts-list">
@@ -315,15 +362,19 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
             ) : (
               parts.map(part => (
                 <div key={part.id} className="part-item">
-                  <img src="https://via.placeholder.com/100x100?text=Peça" alt={part.nome} />
+                  <img src="https://via.placeholder.com/100x100?text=Peça" alt={part.name} />
                   <div className="part-info">
-                    <h3>{part.nome}</h3>
-                    <p>Marca: {part.marca} | Modelo: {part.modelo}</p>
+                    <h3>{part.name}</h3>
+                    <p className="part-description">{part.description}</p>
+                    <div className="part-meta">
+                      <span>{(part.categoryIds || []).map(id => categories.find(cat => cat.id === id)?.name).filter(Boolean).join(', ')}</span>
+                      <span>{(part.carIds || []).map(id => cars.find(car => car.id === id)?.carBrandName + ' ' + cars.find(car => car.id === id)?.nome + ' ' + (cars.find(car => car.id === id)?.ano ?? '')).filter(Boolean).join(' | ')}</span>
+                    </div>
                     <div className="part-prices">
-                      <span>R$ {part.preco.toFixed(2)}</span>
+                      <span>R$ {Number(part.price).toFixed(2)}</span>
                     </div>
                   </div>
-                  <div className="part-actions">
+                      <div className="part-actions">
                     <button className="btn-edit" onClick={() => handleEditPart(part)}>✏️ Editar</button>
                     <button className="btn-delete" onClick={() => handleDeletePart(part.id)}>🗑️ Remover</button>
                   </div>
@@ -509,6 +560,194 @@ const AdminClients = ({ setCurrentPage, handleLogout, clients, newClientForm, se
   </div>
 )
 
+const AdminCategories = ({ setCurrentPage, handleLogout, categories, newCategoryForm, setNewCategoryForm, handleCreateCategory, editingCategory, handleEditCategory, handleDeleteCategory, handleCancelCategory }) => (
+  <div className="admin-layout">
+    <aside className="sidebar">
+      <div className="sidebar-logo">⚙️ Gerência</div>
+      <nav className="sidebar-menu">
+        <button className="menu-item" onClick={() => setCurrentPage('admin-dashboard')}>Gestão de Peças</button>
+        <button className="menu-item active">Categorias</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-brands')}>Marcas</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-cars')}>Veículos</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-employees')}>Funcionários</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-clients')}>Clientes</button>
+        <button className="menu-item logout" onClick={handleLogout}>🚪 Sair</button>
+      </nav>
+    </aside>
+
+    <main className="admin-main">
+      <div className="form-container">
+        <h2>{editingCategory ? 'Editar Categoria' : 'Cadastrar Categoria'}</h2>
+        <form className="admin-form" onSubmit={handleCreateCategory}>
+          <input
+            type="text"
+            placeholder="Nome da categoria"
+            value={newCategoryForm.name}
+            onChange={(e) => setNewCategoryForm({ ...newCategoryForm, name: e.target.value })}
+            required
+          />
+          <div className="form-buttons">
+            <button type="submit" className="btn-submit">{editingCategory ? 'Atualizar' : 'Cadastrar'}</button>
+            {editingCategory && (
+              <button type="button" className="btn-cancel" onClick={handleCancelCategory}>Cancelar</button>
+            )}
+          </div>
+        </form>
+
+        <h3>Categorias Cadastradas</h3>
+        <div className="list-container">
+          {categories.length === 0 ? (
+            <p>Nenhuma categoria cadastrada</p>
+          ) : (
+            categories.map(category => (
+              <div key={category.id} className="list-item">
+                <div className="list-info">
+                  <span>{category.name}</span>
+                </div>
+                <div className="list-actions">
+                  <button className="btn-edit" onClick={() => handleEditCategory(category)}>✏️ Editar</button>
+                  <button className="btn-delete" onClick={() => handleDeleteCategory(category.id)}>🗑️ Excluir</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </main>
+  </div>
+)
+
+const AdminBrands = ({ setCurrentPage, handleLogout, carBrands, newBrandForm, setNewBrandForm, handleCreateBrand, editingBrand, handleEditBrand, handleDeleteBrand, handleCancelBrand }) => (
+  <div className="admin-layout">
+    <aside className="sidebar">
+      <div className="sidebar-logo">⚙️ Gerência</div>
+      <nav className="sidebar-menu">
+        <button className="menu-item" onClick={() => setCurrentPage('admin-dashboard')}>Gestão de Peças</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-categories')}>Categorias</button>
+        <button className="menu-item active">Marcas</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-cars')}>Veículos</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-employees')}>Funcionários</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-clients')}>Clientes</button>
+        <button className="menu-item logout" onClick={handleLogout}>🚪 Sair</button>
+      </nav>
+    </aside>
+
+    <main className="admin-main">
+      <div className="form-container">
+        <h2>{editingBrand ? 'Editar Marca' : 'Cadastrar Marca'}</h2>
+        <form className="admin-form" onSubmit={handleCreateBrand}>
+          <input
+            type="text"
+            placeholder="Nome da marca"
+            value={newBrandForm.name}
+            onChange={(e) => setNewBrandForm({ ...newBrandForm, name: e.target.value })}
+            required
+          />
+          <div className="form-buttons">
+            <button type="submit" className="btn-submit">{editingBrand ? 'Atualizar' : 'Cadastrar'}</button>
+            {editingBrand && (
+              <button type="button" className="btn-cancel" onClick={handleCancelBrand}>Cancelar</button>
+            )}
+          </div>
+        </form>
+
+        <h3>Marcas Cadastradas</h3>
+        <div className="list-container">
+          {carBrands.length === 0 ? (
+            <p>Nenhuma marca cadastrada</p>
+          ) : (
+            carBrands.map(brand => (
+              <div key={brand.id} className="list-item">
+                <div className="list-info">
+                  <span>{brand.name}</span>
+                </div>
+                <div className="list-actions">
+                  <button className="btn-edit" onClick={() => handleEditBrand(brand)}>✏️ Editar</button>
+                  <button className="btn-delete" onClick={() => handleDeleteBrand(brand.id)}>🗑️ Excluir</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </main>
+  </div>
+)
+
+const AdminCars = ({ setCurrentPage, handleLogout, cars, carBrands, newCarForm, setNewCarForm, handleCreateCar, editingCar, handleEditCar, handleDeleteCar, handleCancelCar }) => (
+  <div className="admin-layout">
+    <aside className="sidebar">
+      <div className="sidebar-logo">⚙️ Gerência</div>
+      <nav className="sidebar-menu">
+        <button className="menu-item" onClick={() => setCurrentPage('admin-dashboard')}>Gestão de Peças</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-categories')}>Categorias</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-brands')}>Marcas</button>
+        <button className="menu-item active">Veículos</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-employees')}>Funcionários</button>
+        <button className="menu-item" onClick={() => setCurrentPage('admin-clients')}>Clientes</button>
+        <button className="menu-item logout" onClick={handleLogout}>🚪 Sair</button>
+      </nav>
+    </aside>
+
+    <main className="admin-main">
+      <div className="form-container">
+        <h2>{editingCar ? 'Editar Veículo' : 'Cadastrar Veículo'}</h2>
+        <form className="admin-form" onSubmit={handleCreateCar}>
+          <input
+            type="text"
+            placeholder="Modelo do veículo"
+            value={newCarForm.nome}
+            onChange={(e) => setNewCarForm({ ...newCarForm, nome: e.target.value })}
+            required
+          />
+          <input
+            type="number"
+            placeholder="Ano"
+            value={newCarForm.ano}
+            onChange={(e) => setNewCarForm({ ...newCarForm, ano: e.target.value })}
+            required
+          />
+          <select
+            value={newCarForm.carBrandId}
+            onChange={(e) => setNewCarForm({ ...newCarForm, carBrandId: e.target.value })}
+            required
+          >
+            <option value="">Escolha a marca</option>
+            {carBrands.map(brand => (
+              <option key={brand.id} value={String(brand.id)}>{brand.name}</option>
+            ))}
+          </select>
+          <div className="form-buttons">
+            <button type="submit" className="btn-submit">{editingCar ? 'Atualizar' : 'Cadastrar'}</button>
+            {editingCar && (
+              <button type="button" className="btn-cancel" onClick={handleCancelCar}>Cancelar</button>
+            )}
+          </div>
+        </form>
+
+        <h3>Veículos Cadastrados</h3>
+        <div className="list-container">
+          {cars.length === 0 ? (
+            <p>Nenhum veículo cadastrado</p>
+          ) : (
+            cars.map(car => (
+              <div key={car.id} className="list-item">
+                <div className="list-info">
+                  <span>{car.carBrandName} {car.nome} {car.ano}</span>
+                </div>
+                <div className="list-actions">
+                  <button className="btn-edit" onClick={() => handleEditCar(car)}>✏️ Editar</button>
+                  <button className="btn-delete" onClick={() => handleDeleteCar(car.id)}>🗑️ Excluir</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </main>
+  </div>
+)
+
 const ClientDashboard = ({ handleLogout, authEmail }) => (
   <div className="auth-page">
     <div className="auth-card" style={{ maxWidth: 520 }}>
@@ -537,21 +776,269 @@ function App() {
   const [authEmail, setAuthEmail] = useState(() => initialAuthFromStored().email)
   const [authRole, setAuthRole] = useState(() => initialAuthFromStored().role)
   const [parts, setParts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [cars, setCars] = useState([])
+  const [carBrands, setCarBrands] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('')
+  const [selectedBrandFilter, setSelectedBrandFilter] = useState('')
+  const [selectedCarFilter, setSelectedCarFilter] = useState('')
   const [employees, setEmployees] = useState([])
   const [clients, setClients] = useState([])
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [loginSubmitting, setLoginSubmitting] = useState(false)
-  const [newPartForm, setNewPartForm] = useState({ nome: '', marca: '', modelo: '', ano: '', preco: '' })
+  const [newPartForm, setNewPartForm] = useState({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
   const [newEmployeeForm, setNewEmployeeForm] = useState({ nome: '', cargo: '', email: '', telefone: '' })
   const [newClientForm, setNewClientForm] = useState({ nome: '', email: '', telefone: '', endereco: '' })
+  const [newCategoryForm, setNewCategoryForm] = useState({ name: '' })
+  const [newBrandForm, setNewBrandForm] = useState({ name: '' })
+  const [newCarForm, setNewCarForm] = useState({ nome: '', ano: '', carBrandId: '' })
   const [registerForm, setRegisterForm] = useState({ nome: '', sobrenome: '', cpf: '', email: '', celular: '', endereco: '', cidade: '', bairro: '', rua: '', numero: '', complemento: '' })
   const [editingEmployee, setEditingEmployee] = useState(null)
   const [editingClient, setEditingClient] = useState(null)
   const [editingPart, setEditingPart] = useState(null)
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [editingBrand, setEditingBrand] = useState(null)
+  const [editingCar, setEditingCar] = useState(null)
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [productRes, categoryRes, carRes, brandRes] = await Promise.all([
+          apiFetch('/products', { method: 'GET', auth: false }),
+          apiFetch('/categories', { method: 'GET', auth: false }),
+          apiFetch('/cars', { method: 'GET', auth: false }),
+          apiFetch('/car-brands', { method: 'GET', auth: false }),
+        ])
+
+        if (productRes.ok) {
+          setParts(await productRes.json())
+        }
+        if (categoryRes.ok) {
+          setCategories(await categoryRes.json())
+        }
+        if (carRes.ok) {
+          setCars(await carRes.json())
+        }
+        if (brandRes.ok) {
+          setCarBrands(await brandRes.json())
+        }
+      } catch (error) {
+        console.warn('Falha ao carregar dados iniciais:', error)
+      }
+    }
+
+    loadInitialData()
+  }, [])
 
   setAccessTokenGetter(() => authToken)
+
+  const filteredParts = parts.filter(part => {
+    const query = searchQuery.trim().toLowerCase()
+    if (query && !(`${part.name || ''} ${part.description || ''}`.toLowerCase().includes(query))) {
+      return false
+    }
+
+    if (selectedCategoryFilter) {
+      if (!Array.isArray(part.categoryIds) || !part.categoryIds.some(id => String(id) === selectedCategoryFilter)) {
+        return false
+      }
+    }
+
+    if (selectedBrandFilter) {
+      const matchesBrand = (part.carIds || []).some(id => {
+        const car = cars.find(carItem => carItem.id === id)
+        return car?.carBrandName === selectedBrandFilter
+      })
+      if (!matchesBrand) {
+        return false
+      }
+    }
+
+    if (selectedCarFilter) {
+      if (!Array.isArray(part.carIds) || !part.carIds.some(id => String(id) === selectedCarFilter)) {
+        return false
+      }
+    }
+
+    return true
+  })
+
+  const refreshCategories = async () => {
+    try {
+      const res = await apiFetch('/categories', { method: 'GET', auth: false })
+      if (res.ok) {
+        setCategories(await res.json())
+      }
+    } catch (error) {
+      console.warn('Falha ao atualizar categorias:', error)
+    }
+  }
+
+  const refreshCars = async () => {
+    try {
+      const res = await apiFetch('/cars', { method: 'GET', auth: false })
+      if (res.ok) {
+        setCars(await res.json())
+      }
+    } catch (error) {
+      console.warn('Falha ao atualizar veículos:', error)
+    }
+  }
+
+  const refreshBrands = async () => {
+    try {
+      const res = await apiFetch('/car-brands', { method: 'GET', auth: false })
+      if (res.ok) {
+        setCarBrands(await res.json())
+      }
+    } catch (error) {
+      console.warn('Falha ao atualizar marcas:', error)
+    }
+  }
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault()
+    if (!newCategoryForm.name.trim()) {
+      alert('Informe o nome da categoria.')
+      return
+    }
+
+    try {
+      const res = await apiFetch(editingCategory ? `/categories/${editingCategory.id}` : '/categories', {
+        method: editingCategory ? 'PUT' : 'POST',
+        body: { name: newCategoryForm.name.trim() },
+      })
+      if (!res.ok) {
+        throw new Error(await res.text())
+      }
+      await refreshCategories()
+      setNewCategoryForm({ name: '' })
+      setEditingCategory(null)
+      alert(editingCategory ? 'Categoria atualizada!' : 'Categoria criada!')
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+
+  const handleEditCategory = (category) => {
+    setNewCategoryForm({ name: category.name })
+    setEditingCategory(category)
+  }
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Deseja excluir esta categoria?')) return
+    try {
+      const res = await apiFetch(`/categories/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      await refreshCategories()
+      alert('Categoria removida!')
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+
+  const handleCreateBrand = async (e) => {
+    e.preventDefault()
+    if (!newBrandForm.name.trim()) {
+      alert('Informe o nome da marca.')
+      return
+    }
+
+    try {
+      const res = await apiFetch(editingBrand ? `/car-brands/${editingBrand.id}` : '/car-brands', {
+        method: editingBrand ? 'PUT' : 'POST',
+        body: { name: newBrandForm.name.trim() },
+      })
+      if (!res.ok) {
+        throw new Error(await res.text())
+      }
+      await refreshBrands()
+      setNewBrandForm({ name: '' })
+      setEditingBrand(null)
+      alert(editingBrand ? 'Marca atualizada!' : 'Marca criada!')
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+
+  const handleEditBrand = (brand) => {
+    setNewBrandForm({ name: brand.name })
+    setEditingBrand(brand)
+  }
+
+  const handleDeleteBrand = async (id) => {
+    if (!window.confirm('Deseja excluir esta marca?')) return
+    try {
+      const res = await apiFetch(`/car-brands/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      await refreshBrands()
+      alert('Marca removida!')
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+
+  const handleCreateCar = async (e) => {
+    e.preventDefault()
+    if (!newCarForm.nome.trim() || !newCarForm.ano || !newCarForm.carBrandId) {
+      alert('Informe nome, ano e marca do veículo.')
+      return
+    }
+
+    try {
+      const body = {
+        nome: newCarForm.nome.trim(),
+        ano: Number(newCarForm.ano),
+        carBrandId: Number(newCarForm.carBrandId),
+      }
+      const res = await apiFetch(`/cars${editingCar ? `/${editingCar.id}` : ''}`, {
+        method: editingCar ? 'PUT' : 'POST',
+        body,
+      })
+      if (!res.ok) throw new Error(await res.text())
+      await refreshCars()
+      setNewCarForm({ nome: '', ano: '', carBrandId: '' })
+      setEditingCar(null)
+      alert(editingCar ? 'Veículo atualizado!' : 'Veículo criado!')
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+
+  const handleEditCar = (car) => {
+    setNewCarForm({ nome: car.nome, ano: car.ano ?? '', carBrandId: String(car.carBrandId) })
+    setEditingCar(car)
+  }
+
+  const handleDeleteCar = async (id) => {
+    if (!window.confirm('Deseja excluir este veículo?')) return
+    try {
+      const res = await apiFetch(`/cars/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      await refreshCars()
+      alert('Veículo removido!')
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+
+  const handleCancelCategory = () => {
+    setNewCategoryForm({ name: '' })
+    setEditingCategory(null)
+  }
+
+  const handleCancelBrand = () => {
+    setNewBrandForm({ name: '' })
+    setEditingBrand(null)
+  }
+
+  const handleCancelCar = () => {
+    setNewCarForm({ nome: '', ano: '', carBrandId: '' })
+    setEditingCar(null)
+  }
 
   const handleLogin = async (email, password) => {
     setLoginError('')
@@ -632,40 +1119,87 @@ function App() {
 
   const isLoggedIn = Boolean(authToken)
 
-  const handleCreatePart = () => {
-    if (newPartForm.nome && newPartForm.marca && newPartForm.modelo && newPartForm.ano && newPartForm.preco) {
+  const refreshProducts = async () => {
+    try {
+      const res = await apiFetch('/products', { method: 'GET', auth: false })
+      if (res.ok) {
+        setParts(await res.json())
+      }
+    } catch (error) {
+      console.warn('Falha ao atualizar produtos:', error)
+    }
+  }
+
+  const handleCreatePart = async () => {
+    if (!newPartForm.name || !newPartForm.description || !newPartForm.price || newPartForm.categoryIds.length === 0 || newPartForm.carIds.length === 0) {
+      alert('Preencha todos os campos obrigatórios e selecione ao menos uma categoria e um veículo compatível.')
+      return
+    }
+
+    try {
+      const requestBody = {
+        name: newPartForm.name,
+        description: newPartForm.description,
+        price: Number(newPartForm.price),
+        categoryIds: newPartForm.categoryIds,
+        carIds: newPartForm.carIds,
+      }
+
       if (editingPart) {
-        // Editando peça existente
-        setParts(parts.map(part => 
-          part.id === editingPart.id ? { ...newPartForm, id: editingPart.id } : part
-        ))
+        const res = await apiFetch(`/products/${editingPart.id}`, { method: 'PUT', body: requestBody })
+        if (!res.ok) {
+          const errorBody = await res.text()
+          throw new Error(errorBody || 'Falha ao atualizar a peça.')
+        }
         alert('Peça atualizada com sucesso!')
       } else {
-        // Criando nova peça
-        setParts([...parts, { ...newPartForm, id: Date.now(), preco: parseFloat(newPartForm.preco) }])
+        const res = await apiFetch('/products', { method: 'POST', body: requestBody })
+        if (!res.ok) {
+          const errorBody = await res.text()
+          throw new Error(errorBody || 'Falha ao criar a peça.')
+        }
         alert('Peça criada com sucesso!')
       }
-      setNewPartForm({ nome: '', marca: '', modelo: '', ano: '', preco: '' })
+
+      await refreshProducts()
+      setNewPartForm({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
       setEditingPart(null)
-    } else {
-      alert('Preencha todos os campos obrigatórios.')
+    } catch (error) {
+      alert(error.message)
     }
   }
 
   const handleEditPart = (part) => {
-    setNewPartForm({ ...part })
+    setNewPartForm({
+      name: part.name || '',
+      description: part.description || '',
+      price: part.price ?? '',
+      categoryIds: part.categoryIds || [],
+      carIds: part.carIds || [],
+    })
     setEditingPart(part)
   }
 
-  const handleDeletePart = (id) => {
-    if (window.confirm('Tem certeza que deseja excluir esta peça?')) {
-      setParts(parts.filter(part => part.id !== id))
+  const handleDeletePart = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta peça?')) {
+      return
+    }
+
+    try {
+      const res = await apiFetch(`/products/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const errorBody = await res.text()
+        throw new Error(errorBody || 'Falha ao excluir a peça.')
+      }
+      await refreshProducts()
       alert('Peça excluída com sucesso!')
+    } catch (error) {
+      alert(error.message)
     }
   }
 
   const handleCancelEditPart = () => {
-    setNewPartForm({ nome: '', marca: '', modelo: '', ano: '', preco: '' })
+    setNewPartForm({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
     setEditingPart(null)
   }
 
@@ -772,7 +1306,7 @@ function App() {
       )
     }
     if (currentPage === 'register') return <RegisterPage setCurrentPage={setCurrentPage} registerForm={registerForm} setRegisterForm={setRegisterForm} handleRegister={handleRegister} />
-    return <HomePage setCurrentPage={setCurrentPage} parts={parts} />
+    return <HomePage setCurrentPage={setCurrentPage} parts={parts} categories={categories} cars={cars} />
   }
 
   const roleUpper = String(authRole ?? '').toUpperCase()
@@ -788,7 +1322,32 @@ function App() {
   if (roleUpper === 'GERENTE') {
     if (currentPage === 'admin-employees') return <AdminEmployees setCurrentPage={setCurrentPage} handleLogout={handleLogout} employees={employees} newEmployeeForm={newEmployeeForm} setNewEmployeeForm={setNewEmployeeForm} handleCreateEmployee={handleCreateEmployee} editingEmployee={editingEmployee} handleEditEmployee={handleEditEmployee} handleDeleteEmployee={handleDeleteEmployee} handleCancelEditEmployee={handleCancelEditEmployee} />
     if (currentPage === 'admin-clients') return <AdminClients setCurrentPage={setCurrentPage} handleLogout={handleLogout} clients={clients} newClientForm={newClientForm} setNewClientForm={setNewClientForm} handleCreateClient={handleCreateClient} editingClient={editingClient} handleEditClient={handleEditClient} handleDeleteClient={handleDeleteClient} handleCancelEditClient={handleCancelEditClient} />
-    return <AdminDashboard setCurrentPage={setCurrentPage} handleLogout={handleLogout} parts={parts} newPartForm={newPartForm} setNewPartForm={setNewPartForm} handleCreatePart={handleCreatePart} clients={clients} editingPart={editingPart} handleEditPart={handleEditPart} handleDeletePart={handleDeletePart} handleCancelEditPart={handleCancelEditPart} />
+    if (currentPage === 'admin-categories') return <AdminCategories setCurrentPage={setCurrentPage} handleLogout={handleLogout} categories={categories} newCategoryForm={newCategoryForm} setNewCategoryForm={setNewCategoryForm} handleCreateCategory={handleCreateCategory} editingCategory={editingCategory} handleEditCategory={handleEditCategory} handleDeleteCategory={handleDeleteCategory} handleCancelCategory={handleCancelCategory} />
+    if (currentPage === 'admin-brands') return <AdminBrands setCurrentPage={setCurrentPage} handleLogout={handleLogout} carBrands={carBrands} newBrandForm={newBrandForm} setNewBrandForm={setNewBrandForm} handleCreateBrand={handleCreateBrand} editingBrand={editingBrand} handleEditBrand={handleEditBrand} handleDeleteBrand={handleDeleteBrand} handleCancelBrand={handleCancelBrand} />
+    if (currentPage === 'admin-cars') return <AdminCars setCurrentPage={setCurrentPage} handleLogout={handleLogout} cars={cars} carBrands={carBrands} newCarForm={newCarForm} setNewCarForm={setNewCarForm} handleCreateCar={handleCreateCar} editingCar={editingCar} handleEditCar={handleEditCar} handleDeleteCar={handleDeleteCar} handleCancelCar={handleCancelCar} />
+    return <AdminDashboard
+      setCurrentPage={setCurrentPage}
+      handleLogout={handleLogout}
+      parts={filteredParts}
+      newPartForm={newPartForm}
+      setNewPartForm={setNewPartForm}
+      handleCreatePart={handleCreatePart}
+      clients={clients}
+      editingPart={editingPart}
+      handleEditPart={handleEditPart}
+      handleDeletePart={handleDeletePart}
+      handleCancelEditPart={handleCancelEditPart}
+      categories={categories}
+      cars={cars}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      selectedCategoryFilter={selectedCategoryFilter}
+      setSelectedCategoryFilter={setSelectedCategoryFilter}
+      selectedBrandFilter={selectedBrandFilter}
+      setSelectedBrandFilter={setSelectedBrandFilter}
+      selectedCarFilter={selectedCarFilter}
+      setSelectedCarFilter={setSelectedCarFilter}
+    />
   }
 
   return (
