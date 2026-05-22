@@ -172,6 +172,13 @@ const RegisterPage = ({ setCurrentPage, registerForm, setRegisterForm, handleReg
           required 
         />
         <input 
+          type="password" 
+          placeholder="SENHA" 
+          value={registerForm.senha}
+          onChange={(e) => setRegisterForm({ ...registerForm, senha: e.target.value })}
+          required 
+        />
+        <input 
           type="tel" 
           placeholder="CELULAR/WHATSAPP" 
           value={registerForm.celular}
@@ -289,6 +296,15 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
                 onChange={(e) => setNewPartForm({ ...newPartForm, price: e.target.value })}
                 required 
               />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Estoque"
+                value={newPartForm.stock}
+                onChange={(e) => setNewPartForm({ ...newPartForm, stock: e.target.value })}
+                required
+              />
               <select
                 multiple
                 value={newPartForm.categoryIds}
@@ -372,6 +388,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
                     </div>
                     <div className="part-prices">
                       <span>R$ {Number(part.price).toFixed(2)}</span>
+                      <span className="part-stock">Estoque: {part.stock ?? 0}</span>
                     </div>
                   </div>
                       <div className="part-actions">
@@ -765,16 +782,265 @@ const AdminCars = ({ setCurrentPage, handleLogout, cars, carBrands, newCarForm, 
   </div>
 )
 
-const ClientDashboard = ({ handleLogout, authEmail }) => (
-  <div className="auth-page">
-    <div className="auth-card" style={{ maxWidth: 520 }}>
-      <h2>Área do cliente</h2>
-      <p style={{ textAlign: 'center', marginBottom: 16 }}>Conectado como <strong>{authEmail}</strong></p>
-      <p className="login-hint" style={{ textAlign: 'center' }}>Catálogo integrado à API virá nas próximas tarefas.</p>
-      <button type="button" className="btn-submit" onClick={handleLogout}>Sair</button>
+const PartDetailsModal = ({ part, isOpen, onClose, onAddToCart, categories, cars }) => {
+  const [quantity, setQuantity] = useState(1)
+
+  if (!isOpen || !part) return null
+
+  const handleAddClick = () => {
+    if (quantity > 0 && quantity <= (part.stock || 0)) {
+      onAddToCart(part, quantity)
+      setQuantity(1)
+      onClose()
+    }
+  }
+
+  const stockAvailable = part.stock || 0
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        
+        <div className="modal-header">
+          <div className="modal-image">
+            <img src="https://via.placeholder.com/300x300?text=Peça" alt={part.name} />
+          </div>
+          
+          <div className="modal-info">
+            <h1>{part.name}</h1>
+            
+            <div className="modal-details">
+              <div className="detail-row">
+                <span className="detail-label">Preço:</span>
+                <span className="detail-value price">R$ {Number(part.price).toFixed(2)}</span>
+              </div>
+              
+              <div className="detail-row">
+                <span className="detail-label">Estoque disponível:</span>
+                <span className={`detail-value ${stockAvailable > 0 ? 'in-stock' : 'out-of-stock'}`}>
+                  {stockAvailable > 0 ? `${stockAvailable} unidade(s)` : 'Fora de estoque'}
+                </span>
+              </div>
+
+              {(part.categoryIds || []).length > 0 && (
+                <div className="detail-row">
+                  <span className="detail-label">Categorias:</span>
+                  <span className="detail-value">
+                    {(part.categoryIds || []).map(id => categories.find(cat => cat.id === id)?.name).filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              )}
+
+              {(part.carIds || []).length > 0 && (
+                <div className="detail-row">
+                  <span className="detail-label">Compatível com:</span>
+                  <span className="detail-value">
+                    {(part.carIds || []).map(id => {
+                      const car = cars.find(carItem => carItem.id === id)
+                      return car ? `${car.carBrandName} ${car.nome} (${car.ano})` : null
+                    }).filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {stockAvailable > 0 && (
+              <div className="modal-actions">
+                <div className="quantity-selector">
+                  <label htmlFor="quantity">Quantidade:</label>
+                  <div className="quantity-input">
+                    <button 
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={quantity <= 1}
+                    >
+                      −
+                    </button>
+                    <input 
+                      id="quantity"
+                      type="number" 
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = Math.max(1, Math.min(stockAvailable, Number(e.target.value) || 1))
+                        setQuantity(val)
+                      }}
+                      min="1"
+                      max={stockAvailable}
+                    />
+                    <button 
+                      onClick={() => setQuantity(Math.min(stockAvailable, quantity + 1))}
+                      disabled={quantity >= stockAvailable}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <button className="btn-add-cart-modal" onClick={handleAddClick}>
+                  Adicionar ao carrinho
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="modal-description">
+          <h3>Descrição</h3>
+          <p>{part.description}</p>
+        </div>
+      </div>
     </div>
-  </div>
-)
+  )
+}
+
+const ShoppingCart = ({ items, onRemove, onClose, showCart }) => {
+  const total = items.reduce((sum, item) => sum + (item.part.price * item.quantity), 0)
+  const itemCount = items.length
+
+  if (!showCart) return null
+
+  return (
+    <div className="shopping-cart-sidebar">
+      <div className="cart-header">
+        <h2>🛒 Carrinho</h2>
+        <button className="cart-close" onClick={onClose}>✕</button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="cart-empty">
+          <p>Seu carrinho está vazio</p>
+        </div>
+      ) : (
+        <>
+          <div className="cart-items">
+            {items.map((item, index) => (
+              <div key={index} className="cart-item">
+                <div className="cart-item-info">
+                  <h4>{item.part.name}</h4>
+                  <p className="cart-item-price">R$ {Number(item.part.price).toFixed(2)}</p>
+                  <p className="cart-item-quantity">Quantidade: {item.quantity}</p>
+                  <p className="cart-item-subtotal">
+                    Subtotal: R$ {(item.part.price * item.quantity).toFixed(2)}
+                  </p>
+                </div>
+                <button 
+                  className="cart-remove-btn"
+                  onClick={() => onRemove(index)}
+                  title="Remover do carrinho"
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="cart-footer">
+            <div className="cart-total">
+              <span>Total ({itemCount} item{itemCount !== 1 ? 's' : ''}):</span>
+              <span className="total-price">R$ {total.toFixed(2)}</span>
+            </div>
+            <button className="btn-checkout" disabled>
+              Prosseguir para pagamento (em breve)
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, cart, onAddToCart, onRemoveFromCart, showCart, setShowCart }) => {
+  const [selectedPart, setSelectedPart] = useState(null)
+  const [showDetails, setShowDetails] = useState(false)
+
+  const handlePartClick = (part) => {
+    setSelectedPart(part)
+    setShowDetails(true)
+  }
+
+  const handleAddToCart = (part, quantity) => {
+    onAddToCart(part, quantity)
+  }
+
+  const cartItemCount = cart.length
+
+  return (
+    <div className="client-dashboard">
+      <header className="client-navbar">
+        <div className="client-navbar-left">
+          <div className="logo" onClick={() => window.location.reload()}>🏁 Brunão Custom Cars</div>
+        </div>
+        <div className="client-navbar-right">
+          <span className="user-info">Olá, {authEmail?.split('@')[0]}!</span>
+          <button className="cart-button" onClick={() => setShowCart(!showCart)}>
+            🛒 Carrinho
+            {cartItemCount > 0 && <span className="cart-badge">{cartItemCount}</span>}
+          </button>
+          <button onClick={handleLogout} className="btn-logout">Sair</button>
+        </div>
+      </header>
+
+      <main className="client-main">
+        <div className="client-content">
+          <h1>Catálogo de Peças</h1>
+          <p className="subtitle">Encontre as melhores peças para seu carro</p>
+
+          {parts.length === 0 ? (
+            <div className="no-products">
+              <p>Nenhuma peça disponível no momento</p>
+            </div>
+          ) : (
+            <div className="products-grid">
+              {parts.map(part => (
+                <div 
+                  key={part.id} 
+                  className="product-card client-product-card"
+                  onClick={() => handlePartClick(part)}
+                >
+                  <div className="product-image">
+                    <img src="https://via.placeholder.com/200x200?text=Peça" alt={part.name} />
+                    {(part.stock || 0) === 0 && <div className="out-of-stock-badge">Fora de estoque</div>}
+                  </div>
+                  <div className="product-body">
+                    <h3>{part.name}</h3>
+                    <p className="product-price">R$ {Number(part.price).toFixed(2)}</p>
+                    <p className="product-stock">
+                      {(part.stock || 0) > 0 ? `${part.stock} em estoque` : 'Indisponível'}
+                    </p>
+                    <button 
+                      className="btn-view-details"
+                      disabled={(part.stock || 0) === 0}
+                    >
+                      Ver detalhes
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <PartDetailsModal
+        part={selectedPart}
+        isOpen={showDetails}
+        onClose={() => {
+          setShowDetails(false)
+          setSelectedPart(null)
+        }}
+        onAddToCart={handleAddToCart}
+        categories={categories}
+        cars={cars}
+      />
+
+      <ShoppingCart
+        items={cart}
+        onRemove={onRemoveFromCart}
+        onClose={() => setShowCart(false)}
+        showCart={showCart}
+      />
+    </div>
+  )
+}
 
 const EmployeeDashboard = ({ handleLogout, authEmail }) => (
   <div className="auth-page">
@@ -806,7 +1072,9 @@ function App() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [loginSubmitting, setLoginSubmitting] = useState(false)
-  const [newPartForm, setNewPartForm] = useState({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
+  const [cart, setCart] = useState([])
+  const [showCart, setShowCart] = useState(false)
+  const [newPartForm, setNewPartForm] = useState({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })
   const [newEmployeeForm, setNewEmployeeForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
   const [newClientForm, setNewClientForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
   const [newCategoryForm, setNewCategoryForm] = useState({ name: '' })
@@ -1148,8 +1416,8 @@ function App() {
   }
 
   const handleCreatePart = async () => {
-    if (!newPartForm.name || !newPartForm.description || !newPartForm.price || newPartForm.categoryIds.length === 0 || newPartForm.carIds.length === 0) {
-      alert('Preencha todos os campos obrigatórios e selecione ao menos uma categoria e um veículo compatível.')
+    if (!newPartForm.name || !newPartForm.description || !newPartForm.price || newPartForm.stock === '' || Number(newPartForm.stock) < 0 || newPartForm.categoryIds.length === 0 || newPartForm.carIds.length === 0) {
+      alert('Preencha todos os campos obrigatórios e informe o estoque (0 ou mais).')
       return
     }
 
@@ -1158,6 +1426,7 @@ function App() {
         name: newPartForm.name,
         description: newPartForm.description,
         price: Number(newPartForm.price),
+        stock: Number(newPartForm.stock),
         categoryIds: newPartForm.categoryIds,
         carIds: newPartForm.carIds,
       }
@@ -1179,7 +1448,7 @@ function App() {
       }
 
       await refreshProducts()
-      setNewPartForm({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
+      setNewPartForm({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })
       setEditingPart(null)
     } catch (error) {
       alert(error.message)
@@ -1191,6 +1460,7 @@ function App() {
       name: part.name || '',
       description: part.description || '',
       price: part.price ?? '',
+      stock: part.stock ?? '',
       categoryIds: part.categoryIds || [],
       carIds: part.carIds || [],
     })
@@ -1216,7 +1486,7 @@ function App() {
   }
 
   const handleCancelEditPart = () => {
-    setNewPartForm({ name: '', description: '', price: '', categoryIds: [], carIds: [] })
+    setNewPartForm({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })
     setEditingPart(null)
   }
 
@@ -1370,15 +1640,69 @@ function App() {
     setEditingClient(null)
   }
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault()
-    if (registerForm.nome && registerForm.sobrenome && registerForm.email && registerForm.celular) {
-      alert('Cliente registrado com sucesso!')
-      setRegisterForm({ nome: '', sobrenome: '', cpf: '', email: '', celular: '', endereco: '', cidade: '', bairro: '', rua: '', numero: '', complemento: '' })
-      setCurrentPage('home')
-    } else {
+
+    if (!registerForm.nome || !registerForm.sobrenome || !registerForm.email || !registerForm.celular || !registerForm.senha) {
       alert('Preencha todos os campos obrigatórios.')
+      return
     }
+
+    try {
+      const res = await apiFetch('/auth/register', {
+        method: 'POST',
+        auth: false,
+        body: {
+          name: `${registerForm.nome} ${registerForm.sobrenome}`,
+          email: registerForm.email,
+          password: registerForm.senha,
+          phone: registerForm.celular,
+          cpf: registerForm.cpf,
+          role: 'CLIENTE',
+        },
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        throw new Error(errorText || 'Falha ao registrar cliente. Verifique os dados.')
+      }
+
+      const data = await res.json()
+      const role = data.role ?? 'CLIENTE'
+      setAuthToken(data.token)
+      setAuthEmail(data.email ?? registerForm.email)
+      setAuthRole(role)
+      writeStoredAuth({ token: data.token, email: data.email ?? registerForm.email, role })
+      setRegisterForm({ nome: '', sobrenome: '', cpf: '', email: '', celular: '', senha: '', endereco: '', cidade: '', bairro: '', rua: '', numero: '', complemento: '' })
+      setCurrentPage('client-dashboard')
+      alert('Cliente registrado e logado com sucesso!')
+    } catch (error) {
+      alert(error.message || 'Falha ao registrar cliente. Tente novamente.')
+    }
+  }
+
+  const handleAddToCart = (part, quantity) => {
+    const existingItem = cart.find(item => item.part.id === part.id)
+    if (existingItem) {
+      const newQuantity = existingItem.quantity + quantity
+      if (newQuantity <= (part.stock || 0)) {
+        setCart(cart.map(item => 
+          item.part.id === part.id 
+            ? { ...item, quantity: newQuantity }
+            : item
+        ))
+        alert('Quantidade atualizada no carrinho!')
+      } else {
+        alert('Quantidade solicitada excedem o estoque disponível.')
+      }
+    } else {
+      setCart([...cart, { part, quantity }])
+      alert('Peça adicionada ao carrinho!')
+    }
+  }
+
+  const handleRemoveFromCart = (index) => {
+    setCart(cart.filter((_, i) => i !== index))
   }
 
   if (!isLoggedIn) {
@@ -1403,7 +1727,20 @@ function App() {
   const roleUpper = String(authRole ?? '').toUpperCase()
 
   if (roleUpper === 'CLIENTE') {
-    return <ClientDashboard handleLogout={handleLogout} authEmail={authEmail} />
+    return (
+      <ClientDashboard 
+        handleLogout={handleLogout} 
+        authEmail={authEmail}
+        parts={parts}
+        categories={categories}
+        cars={cars}
+        cart={cart}
+        onAddToCart={handleAddToCart}
+        onRemoveFromCart={handleRemoveFromCart}
+        showCart={showCart}
+        setShowCart={setShowCart}
+      />
+    )
   }
 
   if (roleUpper === 'FUNCIONARIO') {

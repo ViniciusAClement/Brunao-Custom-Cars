@@ -31,6 +31,8 @@ public class Product {
 
     private Double price;
 
+    private Integer stock = 0;
+
     @ManyToMany
     @JoinTable(
         name = "product_category",

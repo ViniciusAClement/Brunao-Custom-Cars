@@ -19,6 +19,8 @@ public class ProductResponse {
 
     private Double price;
 
+    private Integer stock;
+
     private List<Long> categoryIds;
 
     private List<Long> carIds;

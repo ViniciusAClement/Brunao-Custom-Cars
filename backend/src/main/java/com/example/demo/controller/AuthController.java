@@ -1,10 +1,12 @@
 package com.example.demo.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,11 +64,17 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @PreAuthorize("hasRole('GERENTE')")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request, Authentication authentication) {
         if (userRepository.findByEmail(request.getEmail()).isPresent() ||
             userRepository.findByCpf(request.getCpf()).isPresent()) {
             return ResponseEntity.badRequest().build();
+        }
+
+        if (request.getRole() != null && request.getRole() != com.example.demo.models.entities.Role.CLIENTE) {
+            if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken ||
+                authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).noneMatch(auth -> auth.equals("ROLE_GERENTE"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
         }
 
         User user;

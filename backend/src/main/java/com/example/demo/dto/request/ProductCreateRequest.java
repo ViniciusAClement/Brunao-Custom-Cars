@@ -3,6 +3,7 @@ package com.example.demo.dto.request;
 import java.util.List;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -33,4 +34,8 @@ public class ProductCreateRequest {
 
     @NotEmpty(message = "At least one car must be selected")
     private List<Long> carIds;
+
+    @NotNull(message = "Stock cannot be null")
+    @Min(value = 0, message = "Stock cannot be negative")
+    private Integer stock;
 }

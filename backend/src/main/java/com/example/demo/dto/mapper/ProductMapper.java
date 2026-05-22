@@ -31,6 +31,7 @@ public class ProductMapper {
             entity.getName(),
             entity.getDescription(),
             entity.getPrice(),
+            entity.getStock(),
             categoryIds,
             carIds
         );
@@ -44,6 +45,7 @@ public class ProductMapper {
         entity.setName(request.getName());
         entity.setDescription(request.getDescription());
         entity.setPrice(request.getPrice());
+        entity.setStock(request.getStock());
         return entity;
     }
 
