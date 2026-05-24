@@ -36,7 +36,14 @@ public class ProductService {
     }
 
     public ProductResponse create(ProductCreateRequest request) {
+        return create(request, false);
+    }
+
+    public ProductResponse create(ProductCreateRequest request, boolean isFuncionario) {
         Product entity = mapper.toEntity(request);
+        if (isFuncionario) {
+            entity.setPrice(null);
+        }
         List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
         List<Car> cars = carRepository.findAllById(request.getCarIds());
         entity.setCategories(categories);

@@ -70,7 +70,9 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
         }
 
-        if (request.getRole() != null && request.getRole() != com.example.demo.models.entities.Role.CLIENTE) {
+        com.example.demo.models.entities.Role requestedRole = request.getRole() == null ? com.example.demo.models.entities.Role.CLIENTE : request.getRole();
+
+        if (requestedRole != com.example.demo.models.entities.Role.CLIENTE) {
             if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken ||
                 authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).noneMatch(auth -> auth.equals("ROLE_GERENTE"))) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -78,7 +80,7 @@ public class AuthController {
         }
 
         User user;
-        switch (request.getRole()) {
+        switch (requestedRole) {
             case CLIENTE:
                 user = new Client();
                 break;
@@ -97,7 +99,7 @@ public class AuthController {
         user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setCpf(request.getCpf());
-        user.setRole(request.getRole());
+        user.setRole(requestedRole);
 
         userRepository.save(user);
 

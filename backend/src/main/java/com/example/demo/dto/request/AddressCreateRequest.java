@@ -40,6 +40,5 @@ public class AddressCreateRequest {
     @Size(max = 100, message = "Country must be at most 100 characters")
     private String country;
 
-    @NotNull(message = "ClientId cannot be null")
     private Long clientId;
 }

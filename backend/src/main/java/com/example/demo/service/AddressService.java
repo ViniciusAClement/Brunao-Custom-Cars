@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import com.example.demo.dto.request.AddressUpdateRequest;
 import com.example.demo.dto.response.AddressResponse;
 import com.example.demo.models.entities.Address;
 import com.example.demo.models.entities.Client;
+import com.example.demo.models.entities.User;
 import com.example.demo.repository.AddressRepository;
 import com.example.demo.repository.ClientRepository;
 
@@ -28,10 +30,24 @@ public class AddressService {
         this.mapper = mapper;
     }
 
-    public AddressResponse create(AddressCreateRequest request) {
+    public AddressResponse create(AddressCreateRequest request, Authentication authentication) {
         Address entity = mapper.toEntity(request);
-        Client client = clientRepository.findById(request.getClientId())
-            .orElseThrow(() -> new IllegalArgumentException("Client not found: " + request.getClientId()));
+        Long clientId = request.getClientId();
+
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
+            User currentUser = (User) authentication.getPrincipal();
+            if (currentUser.getRole() == com.example.demo.models.entities.Role.CLIENTE) {
+                clientId = currentUser.getId();
+            }
+        }
+
+        Long resolvedClientId = clientId;
+        if (resolvedClientId == null) {
+            throw new IllegalArgumentException("ClientId cannot be null");
+        }
+
+        Client client = clientRepository.findById(resolvedClientId)
+            .orElseThrow(() -> new IllegalArgumentException("Client not found: " + resolvedClientId));
         entity.setClient(client);
         return mapper.toResponse(repository.save(entity));
     }

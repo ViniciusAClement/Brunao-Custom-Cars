@@ -25,7 +25,6 @@ public class ProductCreateRequest {
     @Size(min = 1, max = 500, message = "Description must be between 1 and 500 characters")
     private String description;
 
-    @NotNull(message = "Price cannot be null")
     @DecimalMin(value = "0.01", message = "Price must be greater than 0")
     private Double price;
 

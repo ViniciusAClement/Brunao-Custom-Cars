@@ -30,7 +30,7 @@ public class ClientController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('GERENTE')")
+    @PreAuthorize("hasAnyRole('GERENTE','FUNCIONARIO')")
     public ClientResponse create(@Valid @RequestBody ClientCreateRequest request) {
         return service.create(request);
     }

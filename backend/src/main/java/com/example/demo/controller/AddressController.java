@@ -2,6 +2,8 @@ package com.example.demo.controller;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,8 +31,9 @@ public class AddressController {
     }
 
     @PostMapping
-    public AddressResponse create(@Valid @RequestBody AddressCreateRequest request) {
-        return service.create(request);
+    @PreAuthorize("hasAnyRole('CLIENTE','GERENTE')")
+    public AddressResponse create(@Valid @RequestBody AddressCreateRequest request, Authentication authentication) {
+        return service.create(request, authentication);
     }
 
     @GetMapping
