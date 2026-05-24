@@ -11,6 +11,7 @@ import com.example.demo.dto.request.ClientCreateRequest;
 import com.example.demo.dto.request.ClientUpdateRequest;
 import com.example.demo.dto.response.ClientResponse;
 import com.example.demo.models.entities.Client;
+import com.example.demo.models.entities.MarketCar;
 import com.example.demo.repository.ClientRepository;
 
 @Service
@@ -30,6 +31,9 @@ public class ClientService {
     public ClientResponse create(ClientCreateRequest request) {
         Client entity = mapper.toEntity(request);
         entity.setPassword(passwordEncoder.encode(entity.getPassword()));
+        MarketCar marketCar = new MarketCar();
+        marketCar.setClient(entity);
+        entity.setMarketCar(marketCar);
         return mapper.toResponse(repository.save(entity));
     }
 
