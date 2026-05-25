@@ -307,14 +307,19 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
                 required
               />
               {isGerente && (
-              <input 
-                type="number" 
-                step="0.01"
-                placeholder="Preço" 
-                value={newPartForm.price}
-                onChange={(e) => setNewPartForm({ ...newPartForm, price: e.target.value })}
-                required 
-              />
+              <>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="Preço" 
+                  value={newPartForm.price}
+                  onChange={(e) => setNewPartForm({ ...newPartForm, price: e.target.value })}
+                  required 
+                />
+                <small style={{ display: 'block', marginTop: 6, color: '#555' }}>
+                  O gerente deve informar o preço da peça antes de cadastrá-la.
+                </small>
+              </>
               )}
               <input
                 type="number"
@@ -1096,83 +1101,109 @@ const EmployeeDashboard = ({
   parts,
   handleCancelEditPart,
 }) => (
-  <div className="auth-page">
-    <div className="auth-card" style={{ maxWidth: 640 }}>
-      <h2>Área do funcionário</h2>
-      <p style={{ textAlign: 'center', marginBottom: 16 }}>Conectado como <strong>{authEmail}</strong></p>
-      <p className="login-hint" style={{ textAlign: 'center', marginBottom: 20 }}>
-        Cadastre peças sem preço. O gerente define o valor antes de liberar para os clientes.
-      </p>
-      <form onSubmit={(e) => { e.preventDefault(); handleCreatePart(); }} className="create-part-form">
-        <input
-          type="text"
-          placeholder="Nome da peça"
-          value={newPartForm.name}
-          onChange={(e) => setNewPartForm({ ...newPartForm, name: e.target.value })}
-          required
-        />
-        <textarea
-          placeholder="Descrição"
-          value={newPartForm.description}
-          onChange={(e) => setNewPartForm({ ...newPartForm, description: e.target.value })}
-          required
-        />
-        <input
-          type="number"
-          min="0"
-          step="1"
-          placeholder="Estoque"
-          value={newPartForm.stock}
-          onChange={(e) => setNewPartForm({ ...newPartForm, stock: e.target.value })}
-          required
-        />
-        <select
-          multiple
-          value={newPartForm.categoryIds}
-          onChange={(e) => setNewPartForm({
-            ...newPartForm,
-            categoryIds: Array.from(e.target.selectedOptions, (option) => Number(option.value)),
-          })}
-          required
-        >
-          <option value="" disabled>Categorias</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>{category.name}</option>
-          ))}
-        </select>
-        <select
-          multiple
-          value={newPartForm.carIds}
-          onChange={(e) => setNewPartForm({
-            ...newPartForm,
-            carIds: Array.from(e.target.selectedOptions, (option) => Number(option.value)),
-          })}
-          required
-        >
-          <option value="" disabled>Veículos compatíveis</option>
-          {cars.map((car) => (
-            <option key={car.id} value={car.id}>{car.carBrandName} {car.nome} ({car.ano})</option>
-          ))}
-        </select>
-        <button type="submit" className="btn-submit-form">Cadastrar peça (sem preço)</button>
-        {handleCancelEditPart && (
-          <button type="button" className="btn-cancel" onClick={handleCancelEditPart}>Limpar</button>
-        )}
-      </form>
-      {parts.length > 0 && (
-        <div style={{ marginTop: 24, textAlign: 'left' }}>
-          <h3>Peças cadastradas ({parts.length})</h3>
-          <ul style={{ paddingLeft: 18 }}>
-            {parts.map((part) => (
-              <li key={part.id}>
-                {part.name} — {part.price != null ? `R$ ${Number(part.price).toFixed(2)}` : 'aguardando preço'}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <button type="button" className="btn-submit" style={{ marginTop: 20 }} onClick={handleLogout}>Sair</button>
-    </div>
+  <div className="admin-layout">
+    <aside className="sidebar">
+      <div className="sidebar-logo">⚙️ Funcionário</div>
+      <nav className="sidebar-menu">
+        <button className="menu-item active">Gestão de Peças</button>
+        <button className="menu-item logout" onClick={handleLogout}>🚪 Sair</button>
+      </nav>
+    </aside>
+
+    <main className="admin-main">
+      <div className="admin-top">
+        <h1>Bem-vindo, Funcionário</h1>
+        <p className="login-hint" style={{ marginTop: 8 }}>
+          Cadastre peças sem preço. O gerente define o valor depois.
+        </p>
+      </div>
+
+      <div className="admin-content">
+        <section className="admin-section">
+          <div className="create-part-form">
+            <h3>Cadastrar Peça</h3>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreatePart(); }}>
+              <input
+                type="text"
+                placeholder="Nome da peça"
+                value={newPartForm.name}
+                onChange={(e) => setNewPartForm({ ...newPartForm, name: e.target.value })}
+                required
+              />
+              <textarea
+                placeholder="Descrição"
+                value={newPartForm.description}
+                onChange={(e) => setNewPartForm({ ...newPartForm, description: e.target.value })}
+                required
+              />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Estoque"
+                value={newPartForm.stock}
+                onChange={(e) => setNewPartForm({ ...newPartForm, stock: e.target.value })}
+                required
+              />
+              <select
+                multiple
+                value={newPartForm.categoryIds}
+                onChange={(e) => setNewPartForm({
+                  ...newPartForm,
+                  categoryIds: Array.from(e.target.selectedOptions, (option) => Number(option.value)),
+                })}
+                required
+              >
+                <option value="" disabled>Categorias</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <select
+                multiple
+                value={newPartForm.carIds}
+                onChange={(e) => setNewPartForm({
+                  ...newPartForm,
+                  carIds: Array.from(e.target.selectedOptions, (option) => Number(option.value)),
+                })}
+                required
+              >
+                <option value="" disabled>Veículos compatíveis</option>
+                {cars.map((car) => (
+                  <option key={car.id} value={car.id}>{car.carBrandName} {car.nome} ({car.ano})</option>
+                ))}
+              </select>
+              <div className="form-buttons">
+                <button type="submit" className="btn-submit-form">Cadastrar peça (sem preço)</button>
+                {handleCancelEditPart && (
+                  <button type="button" className="btn-cancel" onClick={handleCancelEditPart}>Limpar</button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          <div className="parts-list" style={{ marginTop: 24 }}>
+            <h3>Peças cadastradas</h3>
+            {parts.length === 0 ? (
+              <p>Nenhuma peça cadastrada</p>
+            ) : (
+              parts.map((part) => (
+                <div key={part.id} className="part-item">
+                  <div className="part-info">
+                    <h3>{part.name}</h3>
+                    <p>{part.description}</p>
+                    <div className="part-prices">
+                      <span>{part.price != null ? `R$ ${Number(part.price).toFixed(2)}` : 'Aguardando preço'}</span>
+                      <span className="part-stock">Estoque: {part.stock ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
   </div>
 )
 
@@ -1235,6 +1266,10 @@ function App() {
         }
         if (brandRes.ok) {
           setCarBrands(await brandRes.json())
+        }
+
+        if (authToken && String(authRole ?? '').toUpperCase() === 'GERENTE') {
+          await Promise.all([refreshEmployees(), refreshClients()])
         }
       } catch (error) {
         console.warn('Falha ao carregar dados iniciais:', error)
@@ -1330,6 +1365,28 @@ function App() {
       }
     } catch (error) {
       console.warn('Falha ao atualizar marcas:', error)
+    }
+  }
+
+  const refreshEmployees = async () => {
+    try {
+      const res = await apiFetch('/funcionarios', { method: 'GET' })
+      if (res.ok) {
+        setEmployees(await res.json())
+      }
+    } catch (error) {
+      console.warn('Falha ao carregar funcionários:', error)
+    }
+  }
+
+  const refreshClients = async () => {
+    try {
+      const res = await apiFetch('/clients', { method: 'GET' })
+      if (res.ok) {
+        setClients(await res.json())
+      }
+    } catch (error) {
+      console.warn('Falha ao carregar clientes:', error)
     }
   }
 
@@ -1530,9 +1587,14 @@ function App() {
       if (r === 'GERENTE' || r === 'FUNCIONARIO') {
         await refreshProducts({ staffCatalog: true })
       }
-      if (r === 'GERENTE') setCurrentPage('admin-dashboard')
-      else if (r === 'FUNCIONARIO') setCurrentPage('employee-dashboard')
-      else setCurrentPage('client-dashboard')
+      if (r === 'GERENTE') {
+        await Promise.all([refreshEmployees(), refreshClients()])
+        setCurrentPage('admin-dashboard')
+      } else if (r === 'FUNCIONARIO') {
+        setCurrentPage('employee-dashboard')
+      } else {
+        setCurrentPage('client-dashboard')
+      }
     } catch {
       setLoginError('Não foi possível conectar à API. Confira VITE_API_BASE_URL e se o Spring Boot está rodando.')
     } finally {
@@ -1579,6 +1641,17 @@ function App() {
       console.warn('Falha ao atualizar produtos:', error)
     }
   }
+
+  useEffect(() => {
+    const roleUpper = String(authRole ?? '').toUpperCase()
+    if (!authToken || (roleUpper !== 'GERENTE' && roleUpper !== 'FUNCIONARIO')) {
+      return
+    }
+
+    if (currentPage === 'admin-dashboard') {
+      refreshProducts({ staffCatalog: true })
+    }
+  }, [currentPage, authToken, authRole])
 
   const handleCreatePart = async () => {
     const roleUpper = String(authRole ?? '').toUpperCase()
@@ -1694,36 +1767,24 @@ function App() {
       if (editingEmployee) {
         const res = await apiFetch(`/funcionarios/${editingEmployee.id}`, {
           method: 'PUT',
-          body: body,
+          body,
         })
         if (!res.ok) {
           const errorBody = await res.text()
           throw new Error(errorBody || 'Falha ao atualizar o funcionário.')
         }
-        let updatedEmployee
-        try {
-          updatedEmployee = await res.json()
-        } catch {
-          updatedEmployee = { ...newEmployeeForm, id: editingEmployee.id }
-        }
-        setEmployees(employees.map(emp => emp.id === editingEmployee.id ? updatedEmployee : emp))
+        await refreshEmployees()
         alert('Funcionário atualizado com sucesso!')
       } else {
         const res = await apiFetch('/funcionarios', {
           method: 'POST',
-          body: body,
+          body,
         })
         if (!res.ok) {
           const errorBody = await res.text()
           throw new Error(errorBody || 'Falha ao cadastrar o funcionário.')
         }
-        let createdEmployee
-        try {
-          createdEmployee = await res.json()
-        } catch {
-          createdEmployee = { ...newEmployeeForm, id: Date.now() }
-        }
-        setEmployees([...employees, createdEmployee])
+        await refreshEmployees()
         alert('Funcionário cadastrado com sucesso!')
       }
       setNewEmployeeForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
@@ -1738,10 +1799,18 @@ function App() {
     setEditingEmployee(employee)
   }
 
-  const handleDeleteEmployee = (id) => {
-    if (window.confirm('Tem certeza que deseja excluir este funcionário?')) {
-      setEmployees(employees.filter(emp => emp.id !== id))
+  const handleDeleteEmployee = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir este funcionário?')) return
+    try {
+      const res = await apiFetch(`/funcionarios/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const errorBody = await res.text()
+        throw new Error(errorBody || 'Falha ao excluir o funcionário.')
+      }
+      await refreshEmployees()
       alert('Funcionário excluído com sucesso!')
+    } catch (error) {
+      alert(error.message || 'Falha ao excluir o funcionário.')
     }
   }
 
@@ -1769,36 +1838,24 @@ function App() {
       if (editingClient) {
         const res = await apiFetch(`/clients/${editingClient.id}`, {
           method: 'PUT',
-          body: body,
+          body,
         })
         if (!res.ok) {
           const errorBody = await res.text()
           throw new Error(errorBody || 'Falha ao atualizar o cliente.')
         }
-        let updatedClient
-        try {
-          updatedClient = await res.json()
-        } catch {
-          updatedClient = { ...newClientForm, id: editingClient.id }
-        }
-        setClients(clients.map(client => client.id === editingClient.id ? updatedClient : client))
+        await refreshClients()
         alert('Cliente atualizado com sucesso!')
       } else {
         const res = await apiFetch('/clients', {
           method: 'POST',
-          body: body,
+          body,
         })
         if (!res.ok) {
           const errorBody = await res.text()
           throw new Error(errorBody || 'Falha ao cadastrar o cliente.')
         }
-        let createdClient
-        try {
-          createdClient = await res.json()
-        } catch {
-          createdClient = { ...newClientForm, id: Date.now() }
-        }
-        setClients([...clients, createdClient])
+        await refreshClients()
         alert('Cliente cadastrado com sucesso!')
       }
       setNewClientForm({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
