@@ -1,0 +1,251 @@
+================================================================================
+  AUDITORIA COMPLETA DO BACKEND - Brunao Custom Cars
+  Stack: Spring Boot 3.2, Java 17, Spring Security + JWT, JPA/H2
+  Data da análise: 25/05/2026
+  Última atualização: 25/05/2026 (itens corrigidos removidos)
+================================================================================
+
+Este documento lista falhas de segurança, bugs, problemas de lógica, riscos
+futuros e questões de design ainda pendentes após revisão estática e correções
+aplicadas no código.
+
+Legenda de severidade:
+  [CRÍTICO]  - explorável agora; impacto alto (dados, autenticação, integridade)
+  [ALTO]     - bug ou falha séria em produção
+  [MÉDIO]    - comportamento incorreto ou risco relevante com mitigação parcial
+  [BAIXO]    - qualidade, manutenção, inconsistências
+  [DESIGN]   - decisão arquitetural que tende a gerar problemas no futuro
+
+================================================================================
+ITENS JÁ CORRIGIDOS (removidos da lista principal)
+================================================================================
+
+  [x] Endpoints de escrita públicos em catálogo (GET público; mutações com GERENTE)
+  [x] GerenteController sem controle de papel (@PreAuthorize GERENTE)
+  [x] Senha de gerente sem hash no fluxo /gerentes (BCrypt no GerenteService)
+  [x] IDOR em carrinho (MarketCarAccessService)
+  [x] IDOR e vazamento de PII em clientes, funcionários e endereços
+  [x] Blacklist de tokens em memória (tabela blacklisted_tokens + limpeza agendada)
+  [x] ProductMapper não atualizava estoque no update
+  [x] MarketCarService.setItemsFromRequest sem validação de estoque/quantidade
+  [x] findAllById em ProductService sem validar IDs inexistentes
+  [x] LoginRequest e RegisterRequest sem validação Bean Validation
+  [x] GlobalExceptionHandler sem tratamento de MethodArgumentNotValidException
+  [x] Regra de negócio: funcionário cria peça sem preço; cliente só vê com preço
+  [x] Estoque do carrinho decrementado/liberado no banco (reserveStock/releaseStock)
+
+================================================================================
+1. SEGURANÇA E AUTENTICAÇÃO
+================================================================================
+
+[ALTO] Credenciais padrão seedadas em todo startup
+  Arquivo: service/DataInitializer.java
+  Cria gerente@empresa.com e funcionario@empresa.com com senha "senha123" e imprime
+  no console. Em ambiente exposto isso é porta de entrada conhecida.
+
+[ALTO] JWT secret hardcoded em application.properties
+  Arquivo: resources/application.properties (jwt.secret=...)
+  Chave versionada no repositório. Quem obtém o repo pode forjar tokens.
+  Comentário no arquivo menciona variável de ambiente, mas não há profile prod.
+
+[MÉDIO] Logout e /auth/** totalmente públicos
+  SecurityConfig permite /auth/** sem autenticação. Logout aceita blacklisting sem
+  validar token; atacante pode inflar a blacklist. Register/login sem rate limit.
+
+[MÉDIO] JWT com claim "roles" serializando GrantedAuthority
+  Arquivo: config/JwtUtil.java (claims.put("roles", authorities))
+  Coleção de authorities no payload pode falhar na serialização Jackson, gerar
+  token grande ou inconsistente. O papel não é revalidado do claim no filtro
+  (só recarrega usuário do banco — o claim é redundante/inseguro se usado no futuro).
+
+[MÉDIO] Token expira em 10 horas (jwt.expiration=36000000)
+  Janela longa aumenta impacto de token roubado; sem refresh token nem rotação.
+
+[MÉDIO] H2 Console habilitado
+  application.properties: spring.h2.console.enabled=true
+  Em produção expõe interface de banco se não bloqueada explicitamente no Security.
+  SecurityConfig não menciona /h2-console (pode estar bloqueado por padrão do Spring,
+  mas manter console ligado é risco de configuração).
+
+[MÉDIO] CSRF desabilitado
+  Aceitável para API stateless JWT, mas exige CORS muito restrito em produção.
+
+[BAIXO] Filtro JWT ignora token na blacklist sem resposta 401 explícita
+  JwtRequestFilter: se token está na blacklist, segue a cadeia sem autenticar;
+  endpoint protegido retorna 403/401 genérico — OK, mas cliente pode não distinguir
+  "logout" de "não autenticado".
+
+[BAIXO] JwtRequestFilter não trata JwtException localmente
+  Token malformado no header pode não passar pelo GlobalExceptionHandler da mesma
+  forma que exceções de controller (depende da cadeia de filtros).
+
+================================================================================
+2. AUTORIZAÇÃO E DESIGN DE SEGURANÇA
+================================================================================
+
+[DESIGN] Dupla camada de segurança (SecurityConfig + @PreAuthorize)
+  Catálogo público limitado a GET; mutações exigem papéis nos controllers.
+  Ainda há risco de inconsistência se novo endpoint esquecer anotação ou matcher.
+  Recomendação: documentar matriz de permissões ou centralizar mais regras no
+  SecurityFilterChain.
+
+[MÉDIO] ProductController: POST com @PreAuthorize e GET em permitAll
+  Padrão funcional, mas frágil para novos métodos na mesma rota base.
+
+[MÉDIO] Register permite escolher Role no body (RegisterRequest.role)
+  AuthController valida que só GERENTE autenticado cria GERENTE/FUNCIONARIO.
+  Campo role sem validação explícita de enum (valores inválidos → 400 genérico).
+
+[MÉDIO] Criação de usuários por várias rotas
+  - /auth/register
+  - /clients (staff)
+  - /gerentes (GERENTE)
+  - /funcionarios (GERENTE no POST)
+  Risco de políticas divergentes entre rotas; unificar validações (email/CPF duplicado).
+
+================================================================================
+3. BUGS DE LÓGICA E NEGÓCIO
+================================================================================
+
+[BAIXO] MarketCarItemService.addItem — recálculo inconsistente entre ramos new/merge
+  Funciona via setters, mas fluxo de código difere entre item novo e existente.
+
+[BAIXO] delete de entidades sem tratamento de integridade
+  Ex.: apagar Product, Category, Car ou Client com vínculos ManyToMany/OneToOne pode
+  gerar exceção JPA ou órfãos; GlobalExceptionHandler devolve 500 genérico.
+
+[BAIXO] AuthController register/login retornam ResponseEntity sem corpo em erros
+  badRequest().build() e status(FORBIDDEN).build() — cliente não sabe se foi email,
+  CPF ou permissão (erros de validação @Valid já retornam mensagem).
+
+================================================================================
+4. VALIDAÇÃO E TRATAMENTO DE ERROS
+================================================================================
+
+[MÉDIO] IllegalArgumentException expõe mensagem interna ao cliente
+  Handler retorna ex.getMessage() no body — pode vazar detalhes ("Product not found: 5").
+
+[BAIXO] Exception handler genérico captura Exception.class
+  Pode mascarar erros que deveriam ser 409 (conflito unique) — DataIntegrityViolation
+  vira 500 "Internal server error".
+
+[BAIXO] Serviços Client/Funcionario/Gerente não verificam email/CPF duplicado antes do save
+  AuthController verifica; demais rotas dependem de constraint DB → 500 em vez de 409.
+
+================================================================================
+5. PERSISTÊNCIA E DADOS
+================================================================================
+
+[ALTO] ddl-auto=create-drop e H2 em memória
+  application.properties: schema recriado a cada subida; todos os dados perdidos.
+  Inadequado para produção; PostgreSQL está no pom.xml mas não configurado.
+
+[MÉDIO] Entidades JPA com Lombok @Data
+  User, Client, Product, MarketCar, etc.: @Data gera equals/hashCode em todos os
+  campos — problemático com lazy loading e herança JOINED (pode causar
+  LazyInitializationException ou comportamento estranho em coleções).
+
+[MÉDIO] User com @Data implementando UserDetails
+  Lombok gera getters que podem conflitar com semântica de segurança; campos
+  sensíveis (password) em entidade exposta se serializada acidentalmente.
+
+[BAIXO] Nomenclatura mista PT/EN nas entidades (Car.nome vs Product.name)
+  Aumenta erros em mappers e integração com frontend.
+
+[BAIXO] Campos sem nullable=false em várias colunas de negócio
+  Product.name, Address fields, etc. — dependem só de validação na API.
+
+================================================================================
+6. API, DESIGN E MANUTENIBILIDADE
+================================================================================
+
+[DESIGN] Pacote com.example.demo e artifact "demo"
+  Não reflete o domínio Brunao Custom Cars; dificulta evolução e publicação.
+
+[DESIGN] Ausência de camada de exceção de domínio
+  Serviços lançam IllegalArgumentException para "not found" e regras de negócio —
+  mistura 404/400/409 sem semântica HTTP clara.
+
+[DESIGN] DTOs de resposta expõem estrutura interna (IDs de categorias/carros)
+  Sem paginação, filtros ou versionamento de API.
+
+[BAIXO] Cobertura de testes mínima
+  - DemoApplicationTests: apenas contextLoads
+  - MarketCarItemServiceTest: 2 testes unitários com Mockito
+  Sem testes de integração de segurança, Auth, controllers ou repositórios.
+
+[BAIXO] Field injection em DataInitializer (@Autowired em campos)
+  Estilo legado; preferir construtor (resto do projeto já usa injeção por construtor).
+
+[BAIXO] System.out.println no seed
+  Deveria usar Logger; em produção polui logs.
+
+[BAIXO] Dependência PostgreSQL no pom sem profile
+  Sugere intenção de prod não implementada — risco de deploy errado com H2.
+
+[BAIXO] jwt.expiration tipado como int em JwtUtil
+  @Value injeta long em propriedade grande — ok em Java, mas int limita se passar valor maior.
+
+[BAIXO] Health check não verifica banco ou dependências
+  /health retorna sempre UP — não adequado para Kubernetes liveness com DB.
+
+================================================================================
+7. REGRAS DE NEGÓCIO (PENDENTES / MELHORIAS)
+================================================================================
+
+[MÉDIO] ProductCreateRequest: price sem @NotNull
+  @DecimalMin só valida se price != null — coerente com funcionário; gerente
+  depende de checagem no controller (if price == null).
+
+[BAIXO] Concorrência: dois adds simultâneos no mesmo produto podem passar validateStock
+  Sem lock otimista/pessimista em Product.
+
+================================================================================
+8. CORS E FRONTEND
+================================================================================
+
+[BAIXO] CORS limitado a localhost:5173/5175
+  Correto para dev; produção exige atualizar app.cors.allowed-origins.
+
+[MÉDIO] allowCredentials(true) com origens explícitas
+  Configuração correta para cookies/credentials; exige não usar "*" (já respeitado).
+
+================================================================================
+9. RESUMO EXECUTIVO — PRIORIDADES RESTANTES
+================================================================================
+
+Curto prazo (produção):
+  1. Externalizar jwt.secret; desabilitar H2 console e seed em produção.
+  2. Profile PostgreSQL + ddl-auto validate/none em prod.
+  3. Remover ou proteger credenciais padrão do DataInitializer.
+  4. Rate limit em /auth/login e /auth/register.
+
+Médio prazo:
+  5. Política única de criação de usuários; 409 para email/CPF duplicado.
+  6. Mensagens de erro estruturadas (AuthController, IllegalArgumentException).
+  7. Testes de integração com MockMvc + segurança.
+  8. Remover claim "roles" redundante do JWT ou padronizar uso.
+  9. Lock otimista/pessimista em Product.stock (concorrência extrema).
+
+Longo prazo:
+  10. Renomear pacote com.example.demo.
+  11. Revisar Lombok @Data em entidades JPA.
+  12. Exceções de domínio com códigos HTTP semânticos.
+
+================================================================================
+10. ARQUIVOS MAIS RELEVANTES (PENDÊNCIAS)
+================================================================================
+
+config/JwtUtil.java
+config/JwtRequestFilter.java
+config/GlobalExceptionHandler.java
+controller/AuthController.java
+service/DataInitializer.java
+service/TokenBlacklistService.java (melhorias: Redis em cluster grande)
+resources/application.properties
+pom.xml
+test/** (cobertura)
+
+================================================================================
+FIM DO RELATÓRIO
+================================================================================

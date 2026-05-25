@@ -3,9 +3,12 @@ package com.example.demo.config;
 import io.jsonwebtoken.JwtException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.stream.Collectors;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -30,6 +33,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleJwtException(JwtException ex) {
         logger.warn("JWT exception: {}", ex.getMessage());
         return ResponseEntity.status(401).body("Invalid token");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .collect(Collectors.joining("; "));
+        logger.warn("Validation failed: {}", message);
+        return ResponseEntity.badRequest().body(message);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

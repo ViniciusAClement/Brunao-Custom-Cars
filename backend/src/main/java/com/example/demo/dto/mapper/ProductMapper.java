@@ -56,6 +56,7 @@ public class ProductMapper {
         entity.setName(request.getName());
         entity.setDescription(request.getDescription());
         entity.setPrice(request.getPrice());
+        entity.setStock(request.getStock());
         return entity;
     }
 }

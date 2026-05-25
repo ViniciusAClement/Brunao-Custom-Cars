@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +19,17 @@ public class GerenteService {
 
     private final GerenteRepository repository;
     private final GerenteMapper mapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public GerenteService(GerenteRepository repository, GerenteMapper mapper) {
+    public GerenteService(GerenteRepository repository, GerenteMapper mapper, PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.mapper = mapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public GerenteResponse create(GerenteCreateRequest request) {
         Gerente entity = mapper.toEntity(request);
+        entity.setPassword(passwordEncoder.encode(entity.getPassword()));
         return mapper.toResponse(repository.save(entity));
     }
 
@@ -33,6 +37,7 @@ public class GerenteService {
         Gerente entity = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Gerente not found: " + id));
         mapper.toEntity(request, entity);
+        entity.setPassword(passwordEncoder.encode(entity.getPassword()));
         return mapper.toResponse(repository.save(entity));
     }
 

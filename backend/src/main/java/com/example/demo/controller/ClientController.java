@@ -36,11 +36,13 @@ public class ClientController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('GERENTE','FUNCIONARIO')")
     public List<ClientResponse> findAll() {
         return service.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('GERENTE','FUNCIONARIO') or (hasRole('CLIENTE') and #id == authentication.principal.id)")
     public ClientResponse findById(@PathVariable Long id) {
         return service.findById(id);
     }

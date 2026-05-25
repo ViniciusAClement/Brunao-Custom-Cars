@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +30,7 @@ public class CarController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('GERENTE')")
     public CarResponse create(@Valid @RequestBody CarCreateRequest request) {
         return service.create(request);
     }
@@ -44,11 +46,13 @@ public class CarController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('GERENTE')")
     public CarResponse update(@PathVariable Long id, @Valid @RequestBody CarUpdateRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('GERENTE')")
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }

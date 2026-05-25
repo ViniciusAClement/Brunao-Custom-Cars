@@ -37,22 +37,27 @@ public class AddressController {
     }
 
     @GetMapping
-    public List<AddressResponse> findAll() {
-        return service.findAll();
+    @PreAuthorize("hasAnyRole('CLIENTE','GERENTE','FUNCIONARIO')")
+    public List<AddressResponse> findAll(Authentication authentication) {
+        return service.findAll(authentication);
     }
 
     @GetMapping("/{id}")
-    public AddressResponse findById(@PathVariable Long id) {
-        return service.findById(id);
+    @PreAuthorize("hasAnyRole('CLIENTE','GERENTE','FUNCIONARIO')")
+    public AddressResponse findById(@PathVariable Long id, Authentication authentication) {
+        return service.findById(id, authentication);
     }
 
     @PutMapping("/{id}")
-    public AddressResponse update(@PathVariable Long id, @Valid @RequestBody AddressUpdateRequest request) {
-        return service.update(id, request);
+    @PreAuthorize("hasAnyRole('CLIENTE','GERENTE')")
+    public AddressResponse update(@PathVariable Long id, @Valid @RequestBody AddressUpdateRequest request,
+            Authentication authentication) {
+        return service.update(id, request, authentication);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        service.delete(id);
+    @PreAuthorize("hasAnyRole('CLIENTE','GERENTE')")
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        service.delete(id, authentication);
     }
 }

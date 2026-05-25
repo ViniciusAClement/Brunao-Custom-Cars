@@ -3,6 +3,7 @@ package com.example.demo.service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,38 +26,41 @@ public class MarketCarItemService {
     private final MarketCarRepository marketCarRepository;
     private final ProductRepository productRepository;
     private final MarketCarItemMapper mapper;
+    private final MarketCarAccessService accessService;
+    private final ProductService productService;
 
     public MarketCarItemService(
             MarketCarItemRepository itemRepository,
             MarketCarRepository marketCarRepository,
             ProductRepository productRepository,
-            MarketCarItemMapper mapper) {
+            MarketCarItemMapper mapper,
+            MarketCarAccessService accessService,
+            ProductService productService) {
         this.itemRepository = itemRepository;
         this.marketCarRepository = marketCarRepository;
         this.productRepository = productRepository;
         this.mapper = mapper;
+        this.accessService = accessService;
+        this.productService = productService;
     }
 
-    public MarketCarItemResponse addItem(Long marketCarId, MarketCarItemCreateRequest request) {
+    public MarketCarItemResponse addItem(Long marketCarId, MarketCarItemCreateRequest request, Authentication authentication) {
         MarketCar marketCar = marketCarRepository.findById(marketCarId)
             .orElseThrow(() -> new IllegalArgumentException("MarketCar not found: " + marketCarId));
+        accessService.ensureCanAccessMarketCar(marketCar, authentication);
 
         Product product = productRepository.findById(request.getProductId())
             .orElseThrow(() -> new IllegalArgumentException("Product not found: " + request.getProductId()));
+        productService.ensureProductAvailableForSale(product);
 
-        if (request.getQuantity() == null || request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than 0");
-        }
+        productService.validateQuantity(request.getQuantity());
 
         MarketCarItem item = marketCar.getItems().stream()
             .filter(existing -> existing.getProduct() != null && existing.getProduct().getId().equals(product.getId()))
             .findFirst()
             .orElse(null);
 
-        int targetQuantity = item == null
-            ? request.getQuantity()
-            : item.getQuantity() + request.getQuantity();
-        validateStock(product, targetQuantity);
+        productService.reserveStock(product, request.getQuantity());
 
         if (item == null) {
             item = new MarketCarItem();
@@ -65,7 +69,7 @@ public class MarketCarItemService {
             item.setMarketCar(marketCar);
             marketCar.addItem(item);
         } else {
-            item.setQuantity(targetQuantity);
+            item.setQuantity(item.getQuantity() + request.getQuantity());
             item.recalculateTotalValue();
             marketCar.recalculateTotalValue();
         }
@@ -74,19 +78,21 @@ public class MarketCarItemService {
         return mapper.toResponse(item);
     }
 
-    public MarketCarItemResponse update(Long id, MarketCarItemUpdateRequest request) {
+    public MarketCarItemResponse update(Long id, MarketCarItemUpdateRequest request, Authentication authentication) {
         MarketCarItem item = itemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("MarketCarItem not found: " + id));
+        accessService.ensureCanAccessMarketCarItem(item, authentication);
 
-        if (request.getQuantity() == null || request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than 0");
-        }
+        productService.validateQuantity(request.getQuantity());
 
         Product product = item.getProduct();
         if (product == null) {
             throw new IllegalArgumentException("Product not found for cart item: " + id);
         }
-        validateStock(product, request.getQuantity());
+        productService.ensureProductAvailableForSale(product);
+
+        int previousQuantity = item.getQuantity() != null ? item.getQuantity() : 0;
+        productService.adjustReservedStock(product, previousQuantity, request.getQuantity());
 
         item.setQuantity(request.getQuantity());
         item.recalculateTotalValue();
@@ -102,24 +108,31 @@ public class MarketCarItemService {
         return mapper.toResponse(item);
     }
 
-    public MarketCarItemResponse findById(Long id) {
-        return itemRepository.findById(id)
-            .map(mapper::toResponse)
+    public MarketCarItemResponse findById(Long id, Authentication authentication) {
+        MarketCarItem item = itemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("MarketCarItem not found: " + id));
+        accessService.ensureCanAccessMarketCarItem(item, authentication);
+        return mapper.toResponse(item);
     }
 
-    public List<MarketCarItemResponse> findAllByMarketCar(Long marketCarId) {
+    public List<MarketCarItemResponse> findAllByMarketCar(Long marketCarId, Authentication authentication) {
         MarketCar marketCar = marketCarRepository.findById(marketCarId)
             .orElseThrow(() -> new IllegalArgumentException("MarketCar not found: " + marketCarId));
+        accessService.ensureCanAccessMarketCar(marketCar, authentication);
 
         return marketCar.getItems().stream()
             .map(mapper::toResponse)
             .collect(Collectors.toList());
     }
 
-    public void delete(Long id) {
+    public void delete(Long id, Authentication authentication) {
         MarketCarItem item = itemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("MarketCarItem not found: " + id));
+        accessService.ensureCanAccessMarketCarItem(item, authentication);
+
+        if (item.getProduct() != null && item.getQuantity() != null) {
+            productService.releaseStock(item.getProduct(), item.getQuantity());
+        }
 
         MarketCar marketCar = item.getMarketCar();
         if (marketCar != null) {
@@ -130,12 +143,4 @@ public class MarketCarItemService {
         }
     }
 
-    private void validateStock(Product product, int quantity) {
-        int stock = product.getStock() != null ? product.getStock() : 0;
-        if (quantity > stock) {
-            throw new IllegalArgumentException(
-                "Quantidade solicitada excede o estoque disponível (" + stock + ")"
-            );
-        }
-    }
 }

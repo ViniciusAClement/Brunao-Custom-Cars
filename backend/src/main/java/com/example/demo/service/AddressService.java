@@ -12,6 +12,7 @@ import com.example.demo.dto.request.AddressUpdateRequest;
 import com.example.demo.dto.response.AddressResponse;
 import com.example.demo.models.entities.Address;
 import com.example.demo.models.entities.Client;
+import com.example.demo.models.entities.Role;
 import com.example.demo.models.entities.User;
 import com.example.demo.repository.AddressRepository;
 import com.example.demo.repository.ClientRepository;
@@ -23,56 +24,62 @@ public class AddressService {
     private final AddressRepository repository;
     private final ClientRepository clientRepository;
     private final AddressMapper mapper;
+    private final MarketCarAccessService accessService;
 
-    public AddressService(AddressRepository repository, ClientRepository clientRepository, AddressMapper mapper) {
+    public AddressService(
+            AddressRepository repository,
+            ClientRepository clientRepository,
+            AddressMapper mapper,
+            MarketCarAccessService accessService) {
         this.repository = repository;
         this.clientRepository = clientRepository;
         this.mapper = mapper;
+        this.accessService = accessService;
     }
 
     public AddressResponse create(AddressCreateRequest request, Authentication authentication) {
         Address entity = mapper.toEntity(request);
-        Long clientId = request.getClientId();
+        Long clientId = accessService.resolveClientId(request.getClientId(), authentication);
 
-        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
-            User currentUser = (User) authentication.getPrincipal();
-            if (currentUser.getRole() == com.example.demo.models.entities.Role.CLIENTE) {
-                clientId = currentUser.getId();
-            }
-        }
-
-        Long resolvedClientId = clientId;
-        if (resolvedClientId == null) {
-            throw new IllegalArgumentException("ClientId cannot be null");
-        }
-
-        Client client = clientRepository.findById(resolvedClientId)
-            .orElseThrow(() -> new IllegalArgumentException("Client not found: " + resolvedClientId));
+        Client client = clientRepository.findById(clientId)
+            .orElseThrow(() -> new IllegalArgumentException("Client not found: " + clientId));
         entity.setClient(client);
         return mapper.toResponse(repository.save(entity));
     }
 
-    public AddressResponse update(Long id, AddressUpdateRequest request) {
+    public AddressResponse update(Long id, AddressUpdateRequest request, Authentication authentication) {
         Address entity = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Address not found: " + id));
-        Client client = clientRepository.findById(request.getClientId())
-            .orElseThrow(() -> new IllegalArgumentException("Client not found: " + request.getClientId()));
+        accessService.ensureCanAccessAddress(entity, authentication);
+
+        Long clientId = accessService.resolveClientId(request.getClientId(), authentication);
+        Client client = clientRepository.findById(clientId)
+            .orElseThrow(() -> new IllegalArgumentException("Client not found: " + clientId));
         mapper.toEntity(request, entity);
         entity.setClient(client);
         return mapper.toResponse(repository.save(entity));
     }
 
-    public AddressResponse findById(Long id) {
-        return repository.findById(id)
-            .map(mapper::toResponse)
+    public AddressResponse findById(Long id, Authentication authentication) {
+        Address entity = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Address not found: " + id));
+        accessService.ensureCanAccessAddress(entity, authentication);
+        return mapper.toResponse(entity);
     }
 
-    public List<AddressResponse> findAll() {
+    public List<AddressResponse> findAll(Authentication authentication) {
+        User user = accessService.requireAuthenticatedUser(authentication);
+        if (user.getRole() == Role.CLIENTE) {
+            return repository.findByClientId(user.getId()).stream().map(mapper::toResponse).toList();
+        }
+        accessService.ensureStaffOnly(authentication);
         return repository.findAll().stream().map(mapper::toResponse).toList();
     }
 
-    public void delete(Long id) {
-        repository.deleteById(id);
+    public void delete(Long id, Authentication authentication) {
+        Address entity = repository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Address not found: " + id));
+        accessService.ensureCanAccessAddress(entity, authentication);
+        repository.delete(entity);
     }
 }

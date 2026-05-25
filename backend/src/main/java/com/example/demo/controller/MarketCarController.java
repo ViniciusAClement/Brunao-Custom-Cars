@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,32 +30,33 @@ public class MarketCarController {
     }
 
     @PostMapping
-    public MarketCarResponse create(@Valid @RequestBody MarketCarCreateRequest request) {
-        return service.create(request);
+    public MarketCarResponse create(@Valid @RequestBody MarketCarCreateRequest request, Authentication authentication) {
+        return service.create(request, authentication);
     }
 
     @GetMapping
-    public List<MarketCarResponse> findAll() {
-        return service.findAll();
+    public List<MarketCarResponse> findAll(Authentication authentication) {
+        return service.findAll(authentication);
     }
 
     @GetMapping("/{id}")
-    public MarketCarResponse findById(@PathVariable Long id) {
-        return service.findById(id);
+    public MarketCarResponse findById(@PathVariable Long id, Authentication authentication) {
+        return service.findById(id, authentication);
     }
 
     @GetMapping("/client/{clientId}")
-    public MarketCarResponse findByClientId(@PathVariable Long clientId) {
-        return service.findOrCreateByClientId(clientId);
+    public MarketCarResponse findByClientId(@PathVariable Long clientId, Authentication authentication) {
+        return service.findOrCreateByClientId(clientId, authentication);
     }
 
     @PutMapping("/{id}")
-    public MarketCarResponse update(@PathVariable Long id, @Valid @RequestBody MarketCarUpdateRequest request) {
-        return service.update(id, request);
+    public MarketCarResponse update(@PathVariable Long id, @Valid @RequestBody MarketCarUpdateRequest request,
+            Authentication authentication) {
+        return service.update(id, request, authentication);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        service.delete(id);
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        service.delete(id, authentication);
     }
 }

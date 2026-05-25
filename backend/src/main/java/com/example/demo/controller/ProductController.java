@@ -38,6 +38,10 @@ public class ProductController {
         boolean isFuncionario = authentication.getAuthorities().stream()
             .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_FUNCIONARIO"));
 
+        if (isFuncionario && request.getPrice() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Funcionário não pode definir preço da peça");
+        }
+
         if (!isFuncionario && request.getPrice() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Price is required for gerente");
         }
@@ -46,13 +50,13 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponse> findAll() {
-        return service.findAll();
+    public List<ProductResponse> findAll(Authentication authentication) {
+        return service.findAll(authentication);
     }
 
     @GetMapping("/{id}")
-    public ProductResponse findById(@PathVariable Long id) {
-        return service.findById(id);
+    public ProductResponse findById(@PathVariable Long id, Authentication authentication) {
+        return service.findById(id, authentication);
     }
 
     @PutMapping("/{id}")

@@ -36,11 +36,13 @@ public class FuncionarioController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('GERENTE')")
     public List<FuncionarioResponse> findAll() {
         return service.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('GERENTE')")
     public FuncionarioResponse findById(@PathVariable Long id) {
         return service.findById(id);
     }

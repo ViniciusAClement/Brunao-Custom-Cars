@@ -248,7 +248,9 @@ const RegisterPage = ({ setCurrentPage, registerForm, setRegisterForm, handleReg
   </div>
 )
 
-const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setNewPartForm, handleCreatePart, clients, editingPart, handleEditPart, handleDeletePart, handleCancelEditPart, categories, cars, searchQuery, setSearchQuery, selectedCategoryFilter, setSelectedCategoryFilter, selectedBrandFilter, setSelectedBrandFilter, selectedCarFilter, setSelectedCarFilter }) => (
+const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setNewPartForm, handleCreatePart, clients, editingPart, handleEditPart, handleDeletePart, handleCancelEditPart, categories, cars, searchQuery, setSearchQuery, selectedCategoryFilter, setSelectedCategoryFilter, selectedBrandFilter, setSelectedBrandFilter, selectedCarFilter, setSelectedCarFilter, authRole }) => {
+  const isGerente = String(authRole ?? '').toUpperCase() === 'GERENTE'
+  return (
   <div className="admin-layout">
     <aside className="sidebar">
       <div className="sidebar-logo">⚙️ Gerência</div>
@@ -304,6 +306,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
                 onChange={(e) => setNewPartForm({ ...newPartForm, description: e.target.value })}
                 required
               />
+              {isGerente && (
               <input 
                 type="number" 
                 step="0.01"
@@ -312,6 +315,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
                 onChange={(e) => setNewPartForm({ ...newPartForm, price: e.target.value })}
                 required 
               />
+              )}
               <input
                 type="number"
                 min="0"
@@ -403,7 +407,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
                       <span>{(part.carIds || []).map(id => cars.find(car => car.id === id)?.carBrandName + ' ' + cars.find(car => car.id === id)?.nome + ' ' + (cars.find(car => car.id === id)?.ano ?? '')).filter(Boolean).join(' | ')}</span>
                     </div>
                     <div className="part-prices">
-                      <span>R$ {Number(part.price).toFixed(2)}</span>
+                      <span>{part.price != null ? `R$ ${Number(part.price).toFixed(2)}` : 'Aguardando preço (gerente)'}</span>
                       <span className="part-stock">Estoque: {part.stock ?? 0}</span>
                     </div>
                   </div>
@@ -440,7 +444,8 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
       </div>
     </main>
   </div>
-)
+  )
+}
 
 const AdminEmployees = ({ setCurrentPage, handleLogout, employees, newEmployeeForm, setNewEmployeeForm, handleCreateEmployee, editingEmployee, handleEditEmployee, handleDeleteEmployee, handleCancelEditEmployee }) => (
   <div className="admin-layout">
@@ -1080,13 +1085,93 @@ const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, car
   )
 }
 
-const EmployeeDashboard = ({ handleLogout, authEmail }) => (
+const EmployeeDashboard = ({
+  handleLogout,
+  authEmail,
+  newPartForm,
+  setNewPartForm,
+  handleCreatePart,
+  categories,
+  cars,
+  parts,
+  handleCancelEditPart,
+}) => (
   <div className="auth-page">
-    <div className="auth-card" style={{ maxWidth: 520 }}>
+    <div className="auth-card" style={{ maxWidth: 640 }}>
       <h2>Área do funcionário</h2>
       <p style={{ textAlign: 'center', marginBottom: 16 }}>Conectado como <strong>{authEmail}</strong></p>
-      <p className="login-hint" style={{ textAlign: 'center' }}>Painel operacional pode ser integrado à API aqui.</p>
-      <button type="button" className="btn-submit" onClick={handleLogout}>Sair</button>
+      <p className="login-hint" style={{ textAlign: 'center', marginBottom: 20 }}>
+        Cadastre peças sem preço. O gerente define o valor antes de liberar para os clientes.
+      </p>
+      <form onSubmit={(e) => { e.preventDefault(); handleCreatePart(); }} className="create-part-form">
+        <input
+          type="text"
+          placeholder="Nome da peça"
+          value={newPartForm.name}
+          onChange={(e) => setNewPartForm({ ...newPartForm, name: e.target.value })}
+          required
+        />
+        <textarea
+          placeholder="Descrição"
+          value={newPartForm.description}
+          onChange={(e) => setNewPartForm({ ...newPartForm, description: e.target.value })}
+          required
+        />
+        <input
+          type="number"
+          min="0"
+          step="1"
+          placeholder="Estoque"
+          value={newPartForm.stock}
+          onChange={(e) => setNewPartForm({ ...newPartForm, stock: e.target.value })}
+          required
+        />
+        <select
+          multiple
+          value={newPartForm.categoryIds}
+          onChange={(e) => setNewPartForm({
+            ...newPartForm,
+            categoryIds: Array.from(e.target.selectedOptions, (option) => Number(option.value)),
+          })}
+          required
+        >
+          <option value="" disabled>Categorias</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>{category.name}</option>
+          ))}
+        </select>
+        <select
+          multiple
+          value={newPartForm.carIds}
+          onChange={(e) => setNewPartForm({
+            ...newPartForm,
+            carIds: Array.from(e.target.selectedOptions, (option) => Number(option.value)),
+          })}
+          required
+        >
+          <option value="" disabled>Veículos compatíveis</option>
+          {cars.map((car) => (
+            <option key={car.id} value={car.id}>{car.carBrandName} {car.nome} ({car.ano})</option>
+          ))}
+        </select>
+        <button type="submit" className="btn-submit-form">Cadastrar peça (sem preço)</button>
+        {handleCancelEditPart && (
+          <button type="button" className="btn-cancel" onClick={handleCancelEditPart}>Limpar</button>
+        )}
+      </form>
+      {parts.length > 0 && (
+        <div style={{ marginTop: 24, textAlign: 'left' }}>
+          <h3>Peças cadastradas ({parts.length})</h3>
+          <ul style={{ paddingLeft: 18 }}>
+            {parts.map((part) => (
+              <li key={part.id}>
+                {part.name} — {part.price != null ? `R$ ${Number(part.price).toFixed(2)}` : 'aguardando preço'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <button type="button" className="btn-submit" style={{ marginTop: 20 }} onClick={handleLogout}>Sair</button>
     </div>
   </div>
 )
@@ -1442,6 +1527,9 @@ function App() {
       setLoginPassword('')
 
       const r = String(role ?? '').toUpperCase()
+      if (r === 'GERENTE' || r === 'FUNCIONARIO') {
+        await refreshProducts({ staffCatalog: true })
+      }
       if (r === 'GERENTE') setCurrentPage('admin-dashboard')
       else if (r === 'FUNCIONARIO') setCurrentPage('employee-dashboard')
       else setCurrentPage('client-dashboard')
@@ -1473,9 +1561,17 @@ function App() {
 
   const isLoggedIn = Boolean(authToken)
 
-  const refreshProducts = async () => {
+  const isStaffRole = () => {
+    const r = String(authRole ?? '').toUpperCase()
+    return r === 'GERENTE' || r === 'FUNCIONARIO'
+  }
+
+  const refreshProducts = async ({ staffCatalog = false } = {}) => {
     try {
-      const res = await apiFetch('/products', { method: 'GET', auth: false })
+      const res = await apiFetch('/products', {
+        method: 'GET',
+        auth: staffCatalog && Boolean(authToken),
+      })
       if (res.ok) {
         setParts(await res.json())
       }
@@ -1485,8 +1581,22 @@ function App() {
   }
 
   const handleCreatePart = async () => {
-    if (!newPartForm.name || !newPartForm.description || !newPartForm.price || newPartForm.stock === '' || Number(newPartForm.stock) < 0 || newPartForm.categoryIds.length === 0 || newPartForm.carIds.length === 0) {
-      alert('Preencha todos os campos obrigatórios e informe o estoque (0 ou mais).')
+    const roleUpper = String(authRole ?? '').toUpperCase()
+    const isGerente = roleUpper === 'GERENTE'
+    const isFuncionario = roleUpper === 'FUNCIONARIO'
+
+    if (!newPartForm.name || !newPartForm.description || newPartForm.stock === '' || Number(newPartForm.stock) < 0 || newPartForm.categoryIds.length === 0 || newPartForm.carIds.length === 0) {
+      alert('Preencha nome, descrição, estoque (0 ou mais), categoria e veículos compatíveis.')
+      return
+    }
+
+    if (isGerente && !newPartForm.price) {
+      alert('O gerente deve informar o preço da peça.')
+      return
+    }
+
+    if (isFuncionario && newPartForm.price) {
+      alert('Funcionário não pode definir preço. O gerente definirá depois.')
       return
     }
 
@@ -1494,13 +1604,19 @@ function App() {
       const requestBody = {
         name: newPartForm.name,
         description: newPartForm.description,
-        price: Number(newPartForm.price),
         stock: Number(newPartForm.stock),
         categoryIds: newPartForm.categoryIds,
         carIds: newPartForm.carIds,
       }
+      if (isGerente) {
+        requestBody.price = Number(newPartForm.price)
+      }
 
       if (editingPart) {
+        if (!isGerente) {
+          alert('Somente o gerente pode editar peças.')
+          return
+        }
         const res = await apiFetch(`/products/${editingPart.id}`, { method: 'PUT', body: requestBody })
         if (!res.ok) {
           const errorBody = await res.text()
@@ -1516,7 +1632,7 @@ function App() {
         alert('Peça criada com sucesso!')
       }
 
-      await refreshProducts()
+      await refreshProducts({ staffCatalog: isStaffRole() })
       setNewPartForm({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })
       setEditingPart(null)
     } catch (error) {
@@ -1547,7 +1663,7 @@ function App() {
         const errorBody = await res.text()
         throw new Error(errorBody || 'Falha ao excluir a peça.')
       }
-      await refreshProducts()
+      await refreshProducts({ staffCatalog: isStaffRole() })
       alert('Peça excluída com sucesso!')
     } catch (error) {
       alert(error.message)
@@ -1858,7 +1974,19 @@ function App() {
   }
 
   if (roleUpper === 'FUNCIONARIO') {
-    return <EmployeeDashboard handleLogout={handleLogout} authEmail={authEmail} />
+    return (
+      <EmployeeDashboard
+        handleLogout={handleLogout}
+        authEmail={authEmail}
+        newPartForm={newPartForm}
+        setNewPartForm={setNewPartForm}
+        handleCreatePart={handleCreatePart}
+        categories={categories}
+        cars={cars}
+        parts={parts}
+        handleCancelEditPart={() => setNewPartForm({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })}
+      />
+    )
   }
 
   if (roleUpper === 'GERENTE') {
@@ -1889,6 +2017,7 @@ function App() {
       setSelectedBrandFilter={setSelectedBrandFilter}
       selectedCarFilter={selectedCarFilter}
       setSelectedCarFilter={setSelectedCarFilter}
+      authRole={authRole}
     />
   }
 
