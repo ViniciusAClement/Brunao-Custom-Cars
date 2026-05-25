@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +51,7 @@ public class MarketCarItemServiceTest {
         Product product = new Product();
         product.setId(2L);
         product.setPrice(50.0);
+        product.setStock(10);
 
         when(marketCarRepository.findById(1L)).thenReturn(Optional.of(marketCar));
         when(productRepository.findById(2L)).thenReturn(Optional.of(product));
@@ -66,5 +68,26 @@ public class MarketCarItemServiceTest {
         assertEquals(150.0, marketCar.getTotalValue());
         assertEquals(1L, response.getId());
         assertEquals(2L, response.getProductId());
+    }
+
+    @Test
+    void addItem_shouldRejectWhenQuantityExceedsStock() {
+        MarketCar marketCar = new MarketCar();
+        marketCar.setItems(new ArrayList<>());
+
+        Product product = new Product();
+        product.setId(2L);
+        product.setPrice(50.0);
+        product.setStock(2);
+
+        when(marketCarRepository.findById(1L)).thenReturn(Optional.of(marketCar));
+        when(productRepository.findById(2L)).thenReturn(Optional.of(product));
+
+        IllegalArgumentException ex = assertThrows(
+            IllegalArgumentException.class,
+            () -> service.addItem(1L, new MarketCarItemCreateRequest(2L, 5))
+        );
+
+        assertEquals("Quantidade solicitada excede o estoque disponível (2)", ex.getMessage());
     }
 }

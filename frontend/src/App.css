@@ -1436,6 +1436,31 @@ body {
   margin-bottom: 5px;
 }
 
+.cart-item-quantity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.cart-item-quantity-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.cart-quantity-input {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.cart-quantity-value {
+  min-width: 32px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .cart-item-subtotal {
   font-size: 14px;
   color: #333;

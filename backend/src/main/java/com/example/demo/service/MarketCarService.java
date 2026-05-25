@@ -85,6 +85,20 @@ public class MarketCarService {
             .orElseThrow(() -> new IllegalArgumentException("MarketCar not found for client: " + clientId));
     }
 
+    public MarketCarResponse findOrCreateByClientId(Long clientId) {
+        return marketCarRepository.findByClientId(clientId)
+            .map(mapper::toResponse)
+            .orElseGet(() -> {
+                Client client = clientRepository.findById(clientId)
+                    .orElseThrow(() -> new IllegalArgumentException("Client not found: " + clientId));
+
+                MarketCar marketCar = new MarketCar();
+                marketCar.setClient(client);
+                client.setMarketCar(marketCar);
+                return mapper.toResponse(marketCarRepository.save(marketCar));
+            });
+    }
+
     public List<MarketCarResponse> findAll() {
         return marketCarRepository.findAll().stream()
             .map(mapper::toResponse)

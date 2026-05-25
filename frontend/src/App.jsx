@@ -35,8 +35,24 @@ function initialPageFromStored() {
 
 function initialAuthFromStored() {
   const s = readStoredAuth()
-  if (!s?.token) return { token: null, email: null, role: null }
-  return { token: s.token, email: s.email ?? null, role: s.role ?? null }
+  if (!s?.token) return { token: null, email: null, role: null, userId: null }
+  return { token: s.token, email: s.email ?? null, role: s.role ?? null, userId: s.userId ?? null }
+}
+
+function mapMarketCarToCart(marketCar, parts) {
+  if (!marketCar?.items?.length) return []
+  return marketCar.items
+    .map((apiItem) => {
+      const part = parts.find((p) => p.id === apiItem.productId)
+      if (!part) return null
+      return {
+        id: apiItem.id,
+        part,
+        quantity: apiItem.quantity,
+        totalValue: apiItem.totalValue ?? part.price * apiItem.quantity,
+      }
+    })
+    .filter(Boolean)
 }
 
 const HomePage = ({ setCurrentPage, parts, categories, cars }) => (
@@ -892,9 +908,9 @@ const PartDetailsModal = ({ part, isOpen, onClose, onAddToCart, categories, cars
   )
 }
 
-const ShoppingCart = ({ items, onRemove, onClose, showCart }) => {
-  const total = items.reduce((sum, item) => sum + (item.part.price * item.quantity), 0)
+const ShoppingCart = ({ items, cartTotalValue, onRemove, onUpdateQuantity, onClose, showCart }) => {
   const itemCount = items.length
+  const total = cartTotalValue ?? items.reduce((sum, item) => sum + (item.totalValue ?? item.part.price * item.quantity), 0)
 
   if (!showCart) return null
 
@@ -912,19 +928,39 @@ const ShoppingCart = ({ items, onRemove, onClose, showCart }) => {
       ) : (
         <>
           <div className="cart-items">
-            {items.map((item, index) => (
-              <div key={index} className="cart-item">
+            {items.map((item) => (
+              <div key={item.id} className="cart-item">
                 <div className="cart-item-info">
                   <h4>{item.part.name}</h4>
                   <p className="cart-item-price">R$ {Number(item.part.price).toFixed(2)}</p>
-                  <p className="cart-item-quantity">Quantidade: {item.quantity}</p>
+                  <div className="cart-item-quantity-row">
+                    <span className="cart-item-quantity-label">Quantidade:</span>
+                    <div className="quantity-input cart-quantity-input">
+                      <button
+                        type="button"
+                        onClick={() => (item.quantity <= 1 ? onRemove(item.id) : onUpdateQuantity(item.id, item.quantity - 1))}
+                        title={item.quantity <= 1 ? 'Remover do carrinho' : 'Diminuir quantidade'}
+                      >
+                        −
+                      </button>
+                      <span className="cart-quantity-value">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                        disabled={item.quantity >= (item.part.stock || 0)}
+                        title="Aumentar quantidade"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
                   <p className="cart-item-subtotal">
-                    Subtotal: R$ {(item.part.price * item.quantity).toFixed(2)}
+                    Subtotal: R$ {Number(item.totalValue ?? item.part.price * item.quantity).toFixed(2)}
                   </p>
                 </div>
                 <button 
                   className="cart-remove-btn"
-                  onClick={() => onRemove(index)}
+                  onClick={() => onRemove(item.id)}
                   title="Remover do carrinho"
                 >
                   🗑️
@@ -948,7 +984,7 @@ const ShoppingCart = ({ items, onRemove, onClose, showCart }) => {
   )
 }
 
-const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, cart, onAddToCart, onRemoveFromCart, showCart, setShowCart }) => {
+const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, cart, cartTotalValue, onAddToCart, onRemoveFromCart, onUpdateCartQuantity, showCart, setShowCart }) => {
   const [selectedPart, setSelectedPart] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
 
@@ -1034,7 +1070,9 @@ const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, car
 
       <ShoppingCart
         items={cart}
+        cartTotalValue={cartTotalValue}
         onRemove={onRemoveFromCart}
+        onUpdateQuantity={onUpdateCartQuantity}
         onClose={() => setShowCart(false)}
         showCart={showCart}
       />
@@ -1058,6 +1096,8 @@ function App() {
   const [authToken, setAuthToken] = useState(() => initialAuthFromStored().token)
   const [authEmail, setAuthEmail] = useState(() => initialAuthFromStored().email)
   const [authRole, setAuthRole] = useState(() => initialAuthFromStored().role)
+  const [authUserId, setAuthUserId] = useState(() => initialAuthFromStored().userId)
+  const [marketCarId, setMarketCarId] = useState(null)
   const [parts, setParts] = useState([])
   const [categories, setCategories] = useState([])
   const [cars, setCars] = useState([])
@@ -1073,6 +1113,7 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [loginSubmitting, setLoginSubmitting] = useState(false)
   const [cart, setCart] = useState([])
+  const [cartTotalValue, setCartTotalValue] = useState(0)
   const [showCart, setShowCart] = useState(false)
   const [newPartForm, setNewPartForm] = useState({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })
   const [newEmployeeForm, setNewEmployeeForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
@@ -1117,6 +1158,29 @@ function App() {
 
     loadInitialData()
   }, [])
+
+  const loadClientCart = async (clientId) => {
+    if (!clientId) return
+    try {
+      const res = await apiFetch(`/market-cars/client/${clientId}`)
+      if (!res.ok) {
+        throw new Error(await res.text())
+      }
+      const marketCar = await res.json()
+      setMarketCarId(marketCar.id)
+      setCart(mapMarketCarToCart(marketCar, parts))
+      setCartTotalValue(marketCar.totalValue ?? 0)
+    } catch (error) {
+      console.warn('Falha ao carregar carrinho:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (!authToken || String(authRole ?? '').toUpperCase() !== 'CLIENTE' || !authUserId) {
+      return
+    }
+    loadClientCart(authUserId)
+  }, [authToken, authRole, authUserId, parts])
 
   setAccessTokenGetter(() => authToken)
 
@@ -1371,7 +1435,8 @@ function App() {
       setAuthToken(data.token)
       setAuthEmail(data.email ?? email)
       setAuthRole(role)
-      writeStoredAuth({ token: data.token, email: data.email ?? email, role })
+      setAuthUserId(data.userId ?? null)
+      writeStoredAuth({ token: data.token, email: data.email ?? email, role, userId: data.userId ?? null })
 
       setLoginEmail('')
       setLoginPassword('')
@@ -1398,6 +1463,10 @@ function App() {
     setAuthToken(null)
     setAuthEmail(null)
     setAuthRole(null)
+    setAuthUserId(null)
+    setMarketCarId(null)
+    setCart([])
+    setCartTotalValue(0)
     clearStoredAuth()
     setCurrentPage('home')
   }
@@ -1672,7 +1741,8 @@ function App() {
       setAuthToken(data.token)
       setAuthEmail(data.email ?? registerForm.email)
       setAuthRole(role)
-      writeStoredAuth({ token: data.token, email: data.email ?? registerForm.email, role })
+      setAuthUserId(data.userId ?? null)
+      writeStoredAuth({ token: data.token, email: data.email ?? registerForm.email, role, userId: data.userId ?? null })
       setRegisterForm({ nome: '', sobrenome: '', cpf: '', email: '', celular: '', senha: '', endereco: '', cidade: '', bairro: '', rua: '', numero: '', complemento: '' })
       setCurrentPage('client-dashboard')
       alert('Cliente registrado e logado com sucesso!')
@@ -1681,28 +1751,70 @@ function App() {
     }
   }
 
-  const handleAddToCart = (part, quantity) => {
-    const existingItem = cart.find(item => item.part.id === part.id)
-    if (existingItem) {
-      const newQuantity = existingItem.quantity + quantity
-      if (newQuantity <= (part.stock || 0)) {
-        setCart(cart.map(item => 
-          item.part.id === part.id 
-            ? { ...item, quantity: newQuantity }
-            : item
-        ))
-        alert('Quantidade atualizada no carrinho!')
-      } else {
-        alert('Quantidade solicitada excedem o estoque disponível.')
+  const handleAddToCart = async (part, quantity) => {
+    if (!marketCarId) {
+      alert('Carrinho indisponível no momento. Faça login novamente.')
+      return
+    }
+
+    const existingItem = cart.find((item) => item.part.id === part.id)
+
+    try {
+      const res = await apiFetch(`/market-car-items/market-car/${marketCarId}`, {
+        method: 'POST',
+        body: { productId: part.id, quantity },
+      })
+      if (!res.ok) {
+        throw new Error(await res.text())
       }
-    } else {
-      setCart([...cart, { part, quantity }])
-      alert('Peça adicionada ao carrinho!')
+      if (authUserId) {
+        await loadClientCart(authUserId)
+      }
+      alert(existingItem ? 'Quantidade atualizada no carrinho!' : 'Peça adicionada ao carrinho!')
+    } catch (error) {
+      alert(error.message || 'Falha ao adicionar ao carrinho.')
     }
   }
 
-  const handleRemoveFromCart = (index) => {
-    setCart(cart.filter((_, i) => i !== index))
+  const handleRemoveFromCart = async (itemId) => {
+    try {
+      const res = await apiFetch(`/market-car-items/${itemId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        throw new Error(await res.text())
+      }
+      if (authUserId) {
+        await loadClientCart(authUserId)
+      } else {
+        setCart((prev) => prev.filter((item) => item.id !== itemId))
+      }
+    } catch (error) {
+      alert(error.message || 'Falha ao remover item do carrinho.')
+    }
+  }
+
+  const handleUpdateCartQuantity = async (itemId, newQuantity) => {
+    const cartItem = cart.find((item) => item.id === itemId)
+    if (!cartItem) return
+
+    if (newQuantity > (cartItem.part.stock || 0)) {
+      alert('Quantidade solicitada excede o estoque disponível.')
+      return
+    }
+
+    try {
+      const res = await apiFetch(`/market-car-items/${itemId}`, {
+        method: 'PUT',
+        body: { quantity: newQuantity },
+      })
+      if (!res.ok) {
+        throw new Error(await res.text())
+      }
+      if (authUserId) {
+        await loadClientCart(authUserId)
+      }
+    } catch (error) {
+      alert(error.message || 'Falha ao atualizar quantidade.')
+    }
   }
 
   if (!isLoggedIn) {
@@ -1735,8 +1847,10 @@ function App() {
         categories={categories}
         cars={cars}
         cart={cart}
+        cartTotalValue={cartTotalValue}
         onAddToCart={handleAddToCart}
         onRemoveFromCart={handleRemoveFromCart}
+        onUpdateCartQuantity={handleUpdateCartQuantity}
         showCart={showCart}
         setShowCart={setShowCart}
       />

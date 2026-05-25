@@ -45,7 +45,7 @@ public class MarketCarController {
 
     @GetMapping("/client/{clientId}")
     public MarketCarResponse findByClientId(@PathVariable Long clientId) {
-        return service.findByClientId(clientId);
+        return service.findOrCreateByClientId(clientId);
     }
 
     @PutMapping("/{id}")

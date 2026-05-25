@@ -20,6 +20,7 @@ import com.example.demo.dto.response.AuthResponse;
 import com.example.demo.models.entities.Client;
 import com.example.demo.models.entities.Funcionario;
 import com.example.demo.models.entities.Gerente;
+import com.example.demo.models.entities.MarketCar;
 import com.example.demo.models.entities.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.TokenBlacklistService;
@@ -58,7 +59,7 @@ public class AuthController {
         String token = jwtUtil.generateToken(userDetails);
 
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
-        AuthResponse response = new AuthResponse(token, "Bearer", user.getEmail(), user.getRole().name());
+        AuthResponse response = new AuthResponse(token, "Bearer", user.getEmail(), user.getRole().name(), user.getId());
 
         return ResponseEntity.ok(response);
     }
@@ -82,7 +83,11 @@ public class AuthController {
         User user;
         switch (requestedRole) {
             case CLIENTE:
-                user = new Client();
+                Client client = new Client();
+                MarketCar marketCar = new MarketCar();
+                marketCar.setClient(client);
+                client.setMarketCar(marketCar);
+                user = client;
                 break;
             case GERENTE:
                 user = new Gerente();
@@ -101,10 +106,10 @@ public class AuthController {
         user.setCpf(request.getCpf());
         user.setRole(requestedRole);
 
-        userRepository.save(user);
+        user = userRepository.save(user);
 
         String token = jwtUtil.generateToken(user);
-        AuthResponse response = new AuthResponse(token, "Bearer", user.getEmail(), user.getRole().name());
+        AuthResponse response = new AuthResponse(token, "Bearer", user.getEmail(), user.getRole().name(), user.getId());
 
         return ResponseEntity.ok(response);
     }

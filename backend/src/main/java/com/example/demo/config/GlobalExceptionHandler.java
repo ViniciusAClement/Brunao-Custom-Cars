@@ -32,6 +32,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(401).body("Invalid token");
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
+        logger.warn("Bad request: {}", ex.getMessage());
+        return ResponseEntity.badRequest().body(ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneralException(Exception ex) {
         logger.error("Unexpected error: {}", ex.getMessage(), ex);

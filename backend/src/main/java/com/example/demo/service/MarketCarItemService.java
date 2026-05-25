@@ -53,6 +53,11 @@ public class MarketCarItemService {
             .findFirst()
             .orElse(null);
 
+        int targetQuantity = item == null
+            ? request.getQuantity()
+            : item.getQuantity() + request.getQuantity();
+        validateStock(product, targetQuantity);
+
         if (item == null) {
             item = new MarketCarItem();
             item.setProduct(product);
@@ -60,7 +65,7 @@ public class MarketCarItemService {
             item.setMarketCar(marketCar);
             marketCar.addItem(item);
         } else {
-            item.setQuantity(item.getQuantity() + request.getQuantity());
+            item.setQuantity(targetQuantity);
             item.recalculateTotalValue();
             marketCar.recalculateTotalValue();
         }
@@ -76,6 +81,12 @@ public class MarketCarItemService {
         if (request.getQuantity() == null || request.getQuantity() <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0");
         }
+
+        Product product = item.getProduct();
+        if (product == null) {
+            throw new IllegalArgumentException("Product not found for cart item: " + id);
+        }
+        validateStock(product, request.getQuantity());
 
         item.setQuantity(request.getQuantity());
         item.recalculateTotalValue();
@@ -116,6 +127,15 @@ public class MarketCarItemService {
             marketCarRepository.save(marketCar);
         } else {
             itemRepository.delete(item);
+        }
+    }
+
+    private void validateStock(Product product, int quantity) {
+        int stock = product.getStock() != null ? product.getStock() : 0;
+        if (quantity > stock) {
+            throw new IllegalArgumentException(
+                "Quantidade solicitada excede o estoque disponível (" + stock + ")"
+            );
         }
     }
 }
