@@ -11,10 +11,12 @@ C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\repository\MarketCarItemRepository.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\MarketCarItemUpdateRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\response\ClientResponse.java
+C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\response\PaymentResponse.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\models\entities\Client.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\config\JwtUtil.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\service\MarketCarAccessService.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\response\CategoryResponse.java
+C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\service\PaymentService.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\mapper\AddressMapper.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\GerenteCreateRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\controller\CarController.java
@@ -22,6 +24,7 @@ C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\service\GerenteService.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\repository\FuncionarioRepository.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\repository\UserRepository.java
+C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\repository\OrderRepository.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\response\MarketCarItemResponse.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\MarketCarItemCreateRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\service\CarService.java
@@ -38,6 +41,7 @@ C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\controller\MarketCarController.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\models\entities\MarketCarItem.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\RegisterRequest.java
+C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\models\entities\Order.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\GerenteUpdateRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\repository\ClientRepository.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\models\entities\CarBrand.java
@@ -69,12 +73,14 @@ C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\controller\GerenteController.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\service\ProductService.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\controller\HealthController.java
+C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\PaymentRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\service\AddressService.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\response\AddressResponse.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\models\entities\Product.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\CarUpdateRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\mapper\ClientMapper.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\repository\CarBrandRepository.java
+C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\controller\PaymentController.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\CarBrandCreateRequest.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\controller\CarBrandController.java
 C:\Users\wilia\IdeaProjects\Brunao-Custom-Cars\backend\src\main\java\com\example\demo\dto\request\MarketCarUpdateRequest.java

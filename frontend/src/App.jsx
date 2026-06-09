@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import './styles/checkout.css'
 import { apiFetch, setAccessTokenGetter } from './api'
+import { processPayment, setCheckoutTokenGetter } from './api/checkout'
+import PaymentMethodSelection from './components/PaymentMethodSelection'
+import PaymentFormPix from './components/PaymentFormPix'
+import PaymentFormBoleto from './components/PaymentFormBoleto'
+import PaymentFormCard from './components/PaymentFormCard'
+import PaymentConfirmation from './components/PaymentConfirmation'
+import CheckoutFlow from './components/CheckoutFlow'
 
 const AUTH_STORAGE_KEY = 'bcc_auth'
 
@@ -918,7 +926,7 @@ const PartDetailsModal = ({ part, isOpen, onClose, onAddToCart, categories, cars
   )
 }
 
-const ShoppingCart = ({ items, cartTotalValue, onRemove, onUpdateQuantity, onClose, showCart }) => {
+const ShoppingCart = ({ items, cartTotalValue, onRemove, onUpdateQuantity, onClose, showCart, onCheckout }) => {
   const itemCount = items.length
   const total = cartTotalValue ?? items.reduce((sum, item) => sum + (item.totalValue ?? item.part.price * item.quantity), 0)
 
@@ -984,8 +992,8 @@ const ShoppingCart = ({ items, cartTotalValue, onRemove, onUpdateQuantity, onClo
               <span>Total ({itemCount} item{itemCount !== 1 ? 's' : ''}):</span>
               <span className="total-price">R$ {total.toFixed(2)}</span>
             </div>
-            <button className="btn-checkout" disabled>
-              Prosseguir para pagamento (em breve)
+            <button className="btn-checkout" onClick={onCheckout} disabled={items.length === 0}>
+              Prosseguir para pagamento
             </button>
           </div>
         </>
@@ -994,7 +1002,7 @@ const ShoppingCart = ({ items, cartTotalValue, onRemove, onUpdateQuantity, onClo
   )
 }
 
-const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, cart, cartTotalValue, onAddToCart, onRemoveFromCart, onUpdateCartQuantity, showCart, setShowCart }) => {
+const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, cart, cartTotalValue, onAddToCart, onRemoveFromCart, onUpdateCartQuantity, onCheckout, showCart, setShowCart }) => {
   const [selectedPart, setSelectedPart] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
 
@@ -1083,6 +1091,7 @@ const ClientDashboard = ({ handleLogout, authEmail, parts, categories, cars, car
         cartTotalValue={cartTotalValue}
         onRemove={onRemoveFromCart}
         onUpdateQuantity={onUpdateCartQuantity}
+        onCheckout={onCheckout}
         onClose={() => setShowCart(false)}
         showCart={showCart}
       />
@@ -1231,6 +1240,8 @@ function App() {
   const [cart, setCart] = useState([])
   const [cartTotalValue, setCartTotalValue] = useState(0)
   const [showCart, setShowCart] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
   const [newPartForm, setNewPartForm] = useState({ name: '', description: '', price: '', stock: '', categoryIds: [], carIds: [] })
   const [newEmployeeForm, setNewEmployeeForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
   const [newClientForm, setNewClientForm] = useState({ nome: '', email: '', telefone: '', cpf: '', senha: '' })
@@ -1303,6 +1314,7 @@ function App() {
   }, [authToken, authRole, authUserId, parts])
 
   setAccessTokenGetter(() => authToken)
+  setCheckoutTokenGetter(() => authToken)
 
   const filteredParts = parts.filter(part => {
     const query = searchQuery.trim().toLowerCase()
@@ -1990,6 +2002,35 @@ function App() {
     }
   }
 
+  const handleCheckout = () => {
+    if (!marketCarId) {
+      alert('Erro: Carrinho não inicializado. Faça login novamente.')
+      return
+    }
+    if (cart.length === 0) {
+      alert('Seu carrinho está vazio')
+      return
+    }
+    setShowCart(false)
+    setShowCheckout(true)
+  }
+
+  const handleCheckoutSuccess = async () => {
+    // Aguarda um pouco antes de fechar para sincronizar com o backend
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Recarrega o carrinho (que agora deve estar vazio)
+    if (authUserId) {
+      await loadClientCart(authUserId)
+    }
+    
+    // Fecha o modal de checkout
+    setShowCheckout(false)
+    setShowCart(false)
+    
+    alert('Pedido realizado com sucesso! Obrigado por sua compra.')
+  }
+
   if (!isLoggedIn) {
     if (currentPage === 'login') {
       return (
@@ -2013,20 +2054,31 @@ function App() {
 
   if (roleUpper === 'CLIENTE') {
     return (
-      <ClientDashboard 
-        handleLogout={handleLogout} 
-        authEmail={authEmail}
-        parts={parts}
-        categories={categories}
-        cars={cars}
-        cart={cart}
-        cartTotalValue={cartTotalValue}
-        onAddToCart={handleAddToCart}
-        onRemoveFromCart={handleRemoveFromCart}
-        onUpdateCartQuantity={handleUpdateCartQuantity}
-        showCart={showCart}
-        setShowCart={setShowCart}
-      />
+      <>
+        <ClientDashboard 
+          handleLogout={handleLogout} 
+          authEmail={authEmail}
+          parts={parts}
+          categories={categories}
+          cars={cars}
+          cart={cart}
+          cartTotalValue={cartTotalValue}
+          onAddToCart={handleAddToCart}
+          onRemoveFromCart={handleRemoveFromCart}
+          onUpdateCartQuantity={handleUpdateCartQuantity}
+          onCheckout={handleCheckout}
+          showCart={showCart}
+          setShowCart={setShowCart}
+        />
+        {showCheckout && (
+          <CheckoutFlow
+            marketCarId={marketCarId}
+            cartTotal={cartTotalValue}
+            onClose={() => setShowCheckout(false)}
+            onSuccess={handleCheckoutSuccess}
+          />
+        )}
+      </>
     )
   }
 
