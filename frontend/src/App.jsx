@@ -68,7 +68,7 @@ const HomePage = ({ setCurrentPage, parts, categories, cars }) => (
   <div className="home-page">
     <header className="navbar">
       <div className="navbar-left">
-        <div className="logo">🏁 Brunão Custom Cars</div>
+        <div className="logo">Brunão Custom Cars</div>
         <input type="text" className="search-bar" placeholder="Buscar peças de carro, produtos automotivos, etc." />
       </div>
       <div className="navbar-right">
@@ -82,7 +82,7 @@ const HomePage = ({ setCurrentPage, parts, categories, cars }) => (
 
     <div className="banner">
       <div className="banner-content">
-        <div className="banner-logo">🚗 CUSTOM CARS</div>
+        <div className="banner-logo">CUSTOM CARS</div>
         <h1>MONTE SEU PROJETINHO NA BRUNÃO!</h1>
         <div className="banner-links">
           <a href="#" onClick={() => setCurrentPage('catalog')}>CATÁLOGO</a>
