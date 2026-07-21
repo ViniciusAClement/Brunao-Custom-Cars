@@ -9,6 +9,7 @@ import PaymentFormBoleto from './components/PaymentFormBoleto'
 import PaymentFormCard from './components/PaymentFormCard'
 import PaymentConfirmation from './components/PaymentConfirmation'
 import CheckoutFlow from './components/CheckoutFlow'
+import AdminReports from './components/AdminReports'
 
 const AUTH_STORAGE_KEY = 'bcc_auth'
 
@@ -450,7 +451,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, parts, newPartForm, setN
             <div className="gerencia-card">
               <h3>📊 Gerar Relatórios</h3>
               <p>Veja relatórios de vendas e outras métricas</p>
-              <button className="btn-gerencia">Gerar</button>
+              <button className="btn-gerencia" onClick={() => setCurrentPage('admin-reports')}>Gerar</button>
             </div>
           </div>
         </aside>
@@ -2104,6 +2105,7 @@ function App() {
     if (currentPage === 'admin-categories') return <AdminCategories setCurrentPage={setCurrentPage} handleLogout={handleLogout} categories={categories} newCategoryForm={newCategoryForm} setNewCategoryForm={setNewCategoryForm} handleCreateCategory={handleCreateCategory} editingCategory={editingCategory} handleEditCategory={handleEditCategory} handleDeleteCategory={handleDeleteCategory} handleCancelCategory={handleCancelCategory} />
     if (currentPage === 'admin-brands') return <AdminBrands setCurrentPage={setCurrentPage} handleLogout={handleLogout} carBrands={carBrands} newBrandForm={newBrandForm} setNewBrandForm={setNewBrandForm} handleCreateBrand={handleCreateBrand} editingBrand={editingBrand} handleEditBrand={handleEditBrand} handleDeleteBrand={handleDeleteBrand} handleCancelBrand={handleCancelBrand} />
     if (currentPage === 'admin-cars') return <AdminCars setCurrentPage={setCurrentPage} handleLogout={handleLogout} cars={cars} carBrands={carBrands} newCarForm={newCarForm} setNewCarForm={setNewCarForm} handleCreateCar={handleCreateCar} editingCar={editingCar} handleEditCar={handleEditCar} handleDeleteCar={handleDeleteCar} handleCancelCar={handleCancelCar} />
+    if (currentPage === 'admin-reports') return <AdminReports setCurrentPage={setCurrentPage} handleLogout={handleLogout} authToken={authToken} />
     return <AdminDashboard
       setCurrentPage={setCurrentPage}
       handleLogout={handleLogout}
